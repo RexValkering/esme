@@ -4,10 +4,10 @@ members_per_group: 7            # Number of members per group
 availability_likelihood: 0.78   # Chance of a member being available per option
 
 # Available slots information
-num_boats: 1                    # Number of boats per timeslot  
-num_timeslots: 3                # Number of timeslots per day
-num_days: 2                     # Number of days available
-courses_per_team: 1             # Number of courses to schedule per team/individual
+num_boats: 3                    # Number of boats per timeslot  
+num_timeslots: 4                # Number of timeslots per day
+num_days: 5                     # Number of days available
+courses_per_team: 2             # Number of courses to schedule per team/individual
 
 # The following parameters are only used in individual scheduling mode
 seats_per_boat: 4               # Number of seats to fill per boat
