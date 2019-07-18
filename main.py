@@ -6,6 +6,7 @@ import os
 import csv
 import itertools
 import yaml
+import progressbar
 
 
 class SchedulingSolver():
@@ -84,7 +85,7 @@ class SchedulingSolver():
             total_options_available *= self.seats_per_boat
 
         total_to_assign = self.num_groups * self.courses_per_team
-        if self.solve_mode == 'individuals':
+        if self.solve_mode == 'groups':
             total_to_assign = len(self.assignable) * self.courses_per_team
 
         if self.verbose:
@@ -93,7 +94,7 @@ class SchedulingSolver():
                 total_options_available, self.num_days, self.num_timeslots, self.num_boats
             ))
             print("Total to assign: {} ({} groups x {} courses)".format(total_to_assign,
-                self.num_groups, self.courses_per_team))
+                len(self.assignable), self.courses_per_team))
             print("Ratio: {}/{} ({})".format(total_to_assign, total_options_available,
                 float(total_to_assign) / total_options_available))
             print("")
@@ -125,7 +126,7 @@ class SchedulingSolver():
             for row in reader:
                 name = row[0]
                 group = row[1]
-                availability = [bool(int(x)) for x in row[2:]]
+                availability = [int(x) for x in row[2:]]
 
                 groups[group].append(SchedulingIndividual(name, availability))
 
@@ -232,20 +233,35 @@ class SchedulingSolver():
 
         # Perform evoluationary algorithm
         result = None
-        for gen in range(self.generations):
-            offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
-            fits = toolbox.map(toolbox.evaluate, offspring)
-            for fit, ind in zip(fits, offspring):
-                if int(fit[0]) == maximum_score:
-                    result = ind
-                    break
-                ind.fitness.values = fit
-            population = toolbox.select(offspring, k=len(population))
+        score_widget = progressbar.DynamicMessage('score', width=4)
+        widgets = [
+            progressbar.Percentage(), ' (', progressbar.SimpleProgress(), ') ',
+            progressbar.Bar(),
+            ' [', score_widget, '] ', progressbar.Timer()
+        ]
 
-            if result:
-                break
-        else:
-            result = tools.selBest(population, k=1)[0]
+        with progressbar.ProgressBar(max_value=self.generations, widgets=widgets) as bar:
+            maximum_fit = 0.0
+
+            for gen in range(self.generations):
+                bar.update(gen, score=100 * maximum_fit / maximum_score)
+                offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
+                fits = toolbox.map(toolbox.evaluate, offspring)
+                for fit, ind in zip(fits, offspring):
+                    maximum_fit = max(maximum_fit, fit[0])
+                    if int(fit[0]) == maximum_score:
+                        result = ind
+                        break
+                    ind.fitness.values = fit
+
+                population = toolbox.select(offspring, k=len(population))
+
+                if result:
+                    break
+            else:
+                result = tools.selBest(population, k=1)[0]
+
+            bar.update(self.generations)
 
         # Select best and report on results
         if self.verbose:
