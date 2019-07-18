@@ -147,7 +147,7 @@ class SchedulingSolver():
                     print('Mixture of individuals with and without group is not yet supported')
                     exit()
 
-                group = SchedulingGroup(members=members)
+                group = SchedulingGroup(name=group_name, members=members)
                 self.assignable.append(group)
 
             if self.verbose:
@@ -157,12 +157,13 @@ class SchedulingSolver():
     def generate_groups(self):
         """Generate the groups based on the program parameters"""
         offset = 0
-        for _ in range(self.num_groups):
+        for j in range(self.num_groups):
 
             # Create a standard group
             individuals = [SchedulingIndividual('Individual {}'.format(i))
                            for i in range(offset, offset + self.members_per_group)]
-            group = SchedulingGroup(individuals, num_options=self.num_options)
+            group = SchedulingGroup('Group {}'.format(j), individuals,
+                                    num_options=self.num_options)
 
             # Randomize the availability of a groups members
             group.randomize_preferences(self.availability_likelihood)
@@ -171,21 +172,20 @@ class SchedulingSolver():
             offset += self.members_per_group
 
         if self.verbose:
-            print("Generated {} groups", self.num_groups)
+            print("Generated {} groups".format(self.num_groups))
 
         # Save to file
         if self.groups_save_file:
             with open(self.groups_save_file, 'w') as outfile:
                 writer = csv.writer(outfile)
-                writer.writerow(['Name', 'Group'] +
-                                ['Day {} Slot {}'.format(day, slot) for day, slot in
-                                 itertools.product(range(self.num_days),
-                                                   range(self.num_timeslots))
-                                ])
+                writer.writerow(['Name', 'Group'] + self.list_of_timeslots())
                 for i, group in enumerate(self.assignable):
                     for individual in group.members:
                         writer.writerow([individual.name, i] + individual.preferences)
 
+    def list_of_timeslots(self):
+        return ['Day {} Slot {}'.format(day, slot) for day, slot in
+                itertools.product(range(self.num_days), range(self.num_timeslots))]
 
     def solve(self):
         """Setup the deap module and find the best permutation."""
@@ -258,16 +258,25 @@ class SchedulingSolver():
             for slot in range(self.num_timeslots):
                 days[day][slot] = []
 
-        for i in range(self.courses_per_team * self.num_groups):
+        for i in range(self.courses_per_team * len(self.assignable)):
             assigned_option = result[i]
-            assigned_group = i // self.courses_per_team
+            assigned_entity = self.assignable[i // self.courses_per_team] #i // self.courses_per_team
             assigned_day = assigned_option // self.num_timeslots
             assigned_timeslot = assigned_option % self.num_timeslots
             #print assigned_day, assigned_timeslot, assigned_group
 
-            days[assigned_day][assigned_timeslot].append(assigned_group)
+            days[assigned_day][assigned_timeslot].append(assigned_entity)
 
-        if self.verbose:
+        if self.output_file:
+            with open(self.output_file, 'w') as outfile:
+                writer = csv.writer(outfile)
+                writer.writerow(['Day'] + list(range(1, self.num_timeslots + 1)))
+                for day in range(self.num_days):
+                    slots = days[day]
+                    writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
+                                                 for slot in range(self.num_timeslots)])
+
+        if self.verbose:    
             print("Aantal ploegen: {}".format(self.num_groups))
             print("Aantal boten: {}".format(self.num_boats))
             print("Aantal unieke tijdstippen: {}".format(self.num_options))
@@ -280,7 +289,7 @@ class SchedulingSolver():
                 for slot in range(self.num_timeslots):
                     print("\tTijdstip {}: {}".format(slot + 1, ", ".join([str(x) for x in days[day][slot]])))
                     for x in days[day][slot]:
-                        print("\t\t{} {}".format(x, self.assignable[x].preferences[day * self.num_timeslots + slot]))
+                        print("\t\t{} ({}/{})".format(x, x.availability(day * self.num_timeslots + slot), x.num_members))
                 print("")
 
 
@@ -297,7 +306,7 @@ def evaluate_permutation(individual, assignable, num_courses, num_timeslots, min
 
         # Ensure enough members are available.
         if group.availability(option) >= min_available:
-            total += float(group.preferences[option]) / group.num_members
+            total += float(group.availability(option)) / group.num_members
 
     # Give penalties for one group being twice assigned to the same day.
     for g in range(len(assignable)):
@@ -339,14 +348,15 @@ class SchedulingIndividual():
         return self.preferences
 
     def __repr__(self):
-        return repr(self.availability())
+        return self.name
 
 
 class SchedulingGroup():
     """Represents a group of members with varying availability."""
 
-    def __init__(self, members, num_options=None):
+    def __init__(self, name, members, num_options=None):
         
+        self.name = name
         self.members = members
         for member in members:
             member.group = self
@@ -358,6 +368,8 @@ class SchedulingGroup():
         else:
             print('Cannot infer number of options (SchedulingGroup)')
             exit()
+
+        self.num_members = len(self.members)
 
     def randomize_preferences(self, likelihood):
         for member in self.members:
@@ -371,7 +383,7 @@ class SchedulingGroup():
                 for option in range(self.num_options)]
 
     def __repr__(self):
-        return repr(self.availability())
+        return self.name
 
 
 def main():
