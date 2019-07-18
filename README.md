@@ -13,7 +13,7 @@ Given a list of rowers and the number of available boats and timeslots, can we c
 
 Checkout the code repository and edit the following two files:
 
-*simple.csv*
+*examples/availability-simple.csv*
 
 Make a copy of this file and add your rowers to this file.
 The first column denotes the identifier of each rower; you can put a name or a number, it doesn't really matter.
@@ -28,11 +28,20 @@ You can override these parameters using command-line parameters, if you wish.
 
 Once you're done, run the program as follows:
 
-```python
-python3 main.py -c config.yaml -i simple.csv -v
+```bash
+python3 main.py -c config.yaml -i examples/availability-simple.csv -v
 ```
 
 It will them attempt to create a schedule using evolutionary computing. The `-v` flag stands for verbose and tells you what it's doing.
 
+# Examples
+
+Examples are available in the examples folder. Use the following commands to run them:
+
+```bash
+python3 main.py -c examples/config-simple.yaml -i availability-simple.csv -v
+python3 main.py -c examples/config-large.yaml -i availability-large.csv -v 	# Based on real data
+python3 main.py -c examples/config-random.yaml -v                               # Generates random groups.
+```
 
 
