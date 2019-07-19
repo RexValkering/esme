@@ -21,15 +21,16 @@ The second column denotes the group of each rower.
 If you put a group name, the program tries to schedule each group.
 If you leave all groups empty, the program tries to schedule each individual rower.
 
-*config.yaml*
+*examples/config-simple.yaml*
 
-Adjust the parameters to your situation.
+Make a copy of this file and adjust the parameters to your situation.
 You can override these parameters using command-line parameters, if you wish.
 
 Once you're done, run the program as follows:
 
 ```bash
-python3 main.py -c config.yaml -i examples/availability-simple.csv -v
+pip install -r requirements.txt
+python main.py -c config.yaml -i examples/availability-simple.csv -v
 ```
 
 It will them attempt to create a schedule using evolutionary computing. The `-v` flag stands for verbose and tells you what it's doing.
@@ -39,9 +40,14 @@ It will them attempt to create a schedule using evolutionary computing. The `-v`
 Examples are available in the examples folder. Use the following commands to run them:
 
 ```bash
-python3 main.py -c examples/config-simple.yaml -i availability-simple.csv -v
-python3 main.py -c examples/config-large.yaml -i availability-large.csv -v 	# Based on real data
-python3 main.py -c examples/config-random.yaml -v                               # Generates random groups.
+python main.py -c examples/config-simple.yaml -i availability-simple.csv -v
+python main.py -c examples/config-large.yaml -i availability-large.csv -v 	  # Based on real data
+python main.py -c examples/config-random.yaml -v                              # Generates random groups.
 ```
 
+# How does this work?
+
+This program makes use of Evolutionary Algorithms. Evolutionary Algorithms attempt to solve optimization problems (such as this one) using the traits of evolution: mutation, recombination and survival of the fittest. Each possible schedule is considered an 'individual'. Every generation, the best individuals from that generation are used to form the next generation, which undergo mutation, and the process repeats.
+
+When solving optimization problems, it is important to consider how you model your data: what does an individual look like and how is it mutated? In this algorithm we consider each individual to be a permutation of timeslots. We number the possible timeslots (days x times) and repeat each number for every boat.
 
