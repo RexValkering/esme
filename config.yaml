@@ -1,7 +1,11 @@
-# The following parameters are only used for generating groups
-num_groups: 24                  # Number of groups to generate
-members_per_group: 7            # Number of members per group
+# The following parameters are only used for generating a schema
+generate: groups                # Individuals or groups. Only used if no input is provided. 
+num_to_generate: 24             # Number of individuals/groups to generate
 availability_likelihood: 0.78   # Chance of a member being available per option
+
+# For generating groups and assigning individuals to groups
+min_members_per_group: 7        # Minimum number of members per group
+max_members_per_group: 8        # Maximum number of members per group
 
 # Available slots information
 num_boats: 3                    # Number of boats per timeslot  

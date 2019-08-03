@@ -29,19 +29,27 @@ You can override these parameters using command-line parameters, if you wish.
 Once you're done, run the program as follows:
 
 ```bash
-python3 main.py -c config.yaml -i examples/availability-simple.csv -v
+python3 main.py -c config.yaml -i examples/availability-simple.csv
 ```
 
-It will them attempt to create a schedule using evolutionary computing. The `-v` flag stands for verbose and tells you what it's doing.
+It will them attempt to create a schedule using evolutionary computing.
 
 # Examples
 
 Examples are available in the examples folder. Use the following commands to run them:
 
 ```bash
-python3 main.py -c examples/config-simple.yaml -i availability-simple.csv -v
-python3 main.py -c examples/config-large.yaml -i availability-large.csv -v 	# Based on real data
-python3 main.py -c examples/config-random.yaml -v                               # Generates random groups.
+# Generate 40 random groups and do scheduling only.
+python3 main.py -c examples/config-scheduling-only.yaml
+
+# Use groups from input file and do scheduling only. Groups are based on real data.
+python3 main.py -c examples/config-scheduling-only.yaml -i examples/availability-large.csv
+
+# Generate a group of random individuals and schedule them into groups
+python3 main.py -c examples/config-clustering-and-scheduling.yaml
+
+python3 main.py -c examples/config-large.yaml -i availability-large.csv     # Based on real data
+python3 main.py -c examples/config-random.yaml                              # Generates random groups.
 ```
 
 
