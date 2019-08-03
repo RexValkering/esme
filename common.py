@@ -115,8 +115,6 @@ def parse_args():
     group.add_argument('--num_traits', help='number of traits in input csv files')
     group.add_argument('-w', '--trait_weights', nargs='*', help='trait weights')
 
-    group.add_argument('-v', '--verbose', help='verbose output', action="store_true")
-
     group = parser.add_argument_group('parameters')
     group.add_argument('-min', '--min_members_per_group', help='minimum number of members per group', type=int)
     group.add_argument('-max', '--max_members_per_group', help='maximum number of members per group', type=int)

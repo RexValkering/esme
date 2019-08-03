@@ -49,7 +49,7 @@ class SchedulingSolver():
         self.assignable_individuals = list()
 
         self.num_options = self.num_timeslots * self.num_days
-        self.verbose = args.verbose
+        self.verbose = True
 
         # Either load groups from file or generate them from parameters
         if self.input_files:
