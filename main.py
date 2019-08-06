@@ -9,7 +9,8 @@ import yaml
 import progressbar
 from tabulate import tabulate
 
-from common import generate_teams_from_solution, evaluate_permutation, parse_args, mutate_permutation
+from common import generate_teams_from_solution, evaluate_permutation, parse_args, \
+    mutate_permutation
 from entities import SchedulingGroup, SchedulingIndividual
 from parsers import parse_individuals_file
 
@@ -42,7 +43,7 @@ class SchedulingSolver():
 
         # Files
         self.input_files = args.input
-        self.output_file = args.output
+        self.output_prefix = args.output
         self.groups_save_file = args.savefile
 
         self.assignable_groups = list()
@@ -78,15 +79,18 @@ class SchedulingSolver():
                 print("")
                 print("CLUSTERING")
                 print("----------")
-                print("Number of individuals to assign to groups: {}".format(total_individuals_to_assign))
-                print("Number of groups to form: {}".format(self.total_groups - len(self.assignable_groups)))
+                print("Number of individuals to assign to groups: {}".format(
+                    total_individuals_to_assign))
+                print("Number of groups to form: {}".format(
+                    self.total_groups - len(self.assignable_groups)))
             print("")
             print("SCHEDULING")
             print("----------")
             print("Total number of groups: {}".format(self.total_groups))
-            print("Number of slots to assign: {} ({} groups x {} courses)".format(total_to_assign,
-                self.total_groups, self.courses_per_team))
-            print("Ratio: {}/{} ({})".format(total_to_assign, total_options_available,
+            print("Number of slots to assign: {} ({} groups x {} courses)".format(
+                total_to_assign, self.total_groups, self.courses_per_team))
+            print("Ratio: {}/{} ({})".format(
+                total_to_assign, total_options_available,
                 float(total_to_assign) / total_options_available))
             print("")
 
@@ -101,7 +105,8 @@ class SchedulingSolver():
         Args:
             input_file: file to read
         """
-        individuals_from_file, groups_from_file = parse_individuals_file(input_file, self.num_traits)
+        individuals_from_file, groups_from_file = parse_individuals_file(
+            input_file, self.num_traits)
         self.assignable_individuals.append(individuals_from_file)
         self.assignable_groups.extend(groups_from_file)
 
@@ -157,7 +162,6 @@ class SchedulingSolver():
         for key, value in parameters.items():
             setattr(self, key, value)
 
-
     def generate_groups(self):
         """Generate the groups based on the program parameters"""
         offset = 0
@@ -187,7 +191,7 @@ class SchedulingSolver():
         if self.generate == 'individuals':
             individuals = [SchedulingIndividual('Individual {}'.format(i))
                            for i in range(self.num_to_generate)]
-            
+
             for individual in individuals:
                 individual.randomize_preferences(self.num_options, self.availability_likelihood)
 
@@ -207,6 +211,28 @@ class SchedulingSolver():
                 for individual in self.assignable_individuals[0]:
                     writer.writerow([individual.name, ''] + individual.preferences)
 
+    def generate_schedule_from_solution(self, scheduling_solution, all_groups):
+        """Given a solution, create a [day -> slot -> groups] schedule.
+
+        Args:
+            solution: the solution to create the schedule for
+        """
+        days = {}
+        for day in range(self.num_days):
+            days[day] = {}
+            for slot in range(self.num_timeslots):
+                days[day][slot] = []
+
+        for i in range(self.courses_per_team * self.total_groups):
+            assigned_option = scheduling_solution[i]
+            assigned_entity = all_groups[i // self.courses_per_team]
+            assigned_day = assigned_option // self.num_timeslots
+            assigned_timeslot = assigned_option % self.num_timeslots
+
+            days[assigned_day][assigned_timeslot].append(assigned_entity)
+
+        return days
+
     def get_number_of_groups_by_number_of_individuals(self, num_individuals):
         """Returns the target number of groups.
 
@@ -222,12 +248,14 @@ class SchedulingSolver():
                 itertools.product(range(self.num_days), range(self.num_timeslots))]
 
     def maximum_score(self):
+        """Get the maximum possible score."""
         num_generated_groups = sum(
             self.get_number_of_groups_by_number_of_individuals(len(individuals))
             for individuals in self.assignable_individuals
         ) if self.assignable_individuals else 0
 
-        return num_generated_groups + self.courses_per_team * (num_generated_groups + len(self.assignable_groups))
+        return num_generated_groups + self.courses_per_team * (num_generated_groups +
+                                                               len(self.assignable_groups))
 
     def solve(self):
         """Setup the deap module and find the best permutation."""
@@ -270,7 +298,8 @@ class SchedulingSolver():
             return permutation
 
         toolbox.register("permutation", generate_permutation)
-        toolbox.register("individual", tools.initIterate, creator.Individual, toolbox.permutation)
+        toolbox.register("individual", tools.initIterate,
+                         creator.Individual, toolbox.permutation)
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
         # Register evaluation function
@@ -321,6 +350,34 @@ class SchedulingSolver():
             bar.update(self.generations)
         return result
 
+    def save_results_to_file(self, all_groups, schedule):
+        """Save the solution schedule to file.
+
+        Args:
+            all_groups: list of SchedulingGroup instances
+            schedule: day -> timeslot -> [groups] dictionary
+        """
+        groups_file = "{}_groups.csv".format(self.output_prefix)
+        with open(groups_file, 'w') as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(['Name', 'Group'] +
+                            ['Trait {}'.format(i+1) for i in range(self.num_traits)] +
+                            self.list_of_timeslots())
+            for group in all_groups:
+                for member in group.members:
+                    writer.writerow([member.name, group.name] + member.traits +
+                                    member.availability())
+
+
+        schedule_file = "{}_schedule.csv".format(self.output_prefix)
+        with open(schedule_file, 'w') as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(['Day'] + list(range(1, self.num_timeslots + 1)))
+            for day in range(self.num_days):
+                slots = schedule[day]
+                writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
+                                             for slot in range(self.num_timeslots)])
+
     def report(self, solution):
 
         generated_groups = sorted(
@@ -368,30 +425,11 @@ class SchedulingSolver():
 
         all_groups = self.assignable_groups + generated_groups
 
-        # Convert to printable output
-        days = {}
-        for day in range(self.num_days):
-            days[day] = {}
-            for slot in range(self.num_timeslots):
-                days[day][slot] = []
+        # Retrieve the schedule
+        schedule = self.generate_schedule_from_solution(solution[-1], all_groups)
 
-        for i in range(self.courses_per_team * self.total_groups):
-            assigned_option = solution[-1][i]
-            assigned_entity = all_groups[i // self.courses_per_team] #i // self.courses_per_team
-            assigned_day = assigned_option // self.num_timeslots
-            assigned_timeslot = assigned_option % self.num_timeslots
-            #print assigned_day, assigned_timeslot, assigned_group
-
-            days[assigned_day][assigned_timeslot].append(assigned_entity)
-
-        if self.output_file:
-            with open(self.output_file, 'w') as outfile:
-                writer = csv.writer(outfile)
-                writer.writerow(['Day'] + list(range(1, self.num_timeslots + 1)))
-                for day in range(self.num_days):
-                    slots = days[day]
-                    writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
-                                                 for slot in range(self.num_timeslots)])
+        if self.output_prefix:
+            self.save_results_to_file(all_groups, schedule)
 
         if self.verbose:    
             print("Number of teams: {}".format(self.total_groups))
@@ -404,9 +442,11 @@ class SchedulingSolver():
             for day in range(self.num_days):
                 print("Day {}:".format(day + 1))
                 for slot in range(self.num_timeslots):
-                    print("\tTimeslot {}: {}".format(slot + 1, ", ".join([str(x) for x in days[day][slot]])))
-                    for x in days[day][slot]:
-                        print("\t\t{} ({}/{})".format(x, x.availability(day * self.num_timeslots + slot), x.num_members))
+                    print("\tTimeslot {}: {}".format(slot + 1, ", ".join(
+                        [str(x) for x in schedule[day][slot]])))
+                    for x in schedule[day][slot]:
+                        print("\t\t{} ({}/{})".format(
+                            x, x.availability(day * self.num_timeslots + slot), x.num_members))
                 print("")
 
 

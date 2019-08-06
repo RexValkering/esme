@@ -20,7 +20,7 @@ class SchedulingIndividual(object):
         self.id = next(self._ids)
         self.name = name
         self.preferences = preferences
-        self.traits = traits
+        self.traits = traits if traits is not None else []
         self.normalized_traits = []
 
     def normalize_traits(self, averages, stdevs):
@@ -40,7 +40,7 @@ class SchedulingIndividual(object):
             num_options: number of options to evaluate
             likelihood: likelihood of individual being available
         """
-        self.preferences = [random.random() < likelihood for _ in range(num_options)]
+        self.preferences = [int(random.random() < likelihood) for _ in range(num_options)]
 
     def availability(self, option=None):
         """Return availability at a certain option, or all options if no option is supplied.
