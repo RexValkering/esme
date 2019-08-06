@@ -21,7 +21,7 @@ The second column denotes the group of each rower.
 If you put a group name, the program tries to schedule each group.
 If you leave all groups empty, the program tries to schedule each individual rower.
 
-*examples/config-simple.yaml*
+*config.yaml*
 
 Make a copy of this file and adjust the parameters to your situation.
 You can override these parameters using command-line parameters, if you wish.
@@ -30,7 +30,7 @@ Once you're done, run the program as follows:
 
 ```bash
 pip install -r requirements.txt
-python main.py -c config.yaml -i examples/availability-simple.csv -v
+python3 main.py -c examples/config-scheduling-only.yaml
 ```
 
 It will them attempt to create a schedule using evolutionary computing.
