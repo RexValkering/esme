@@ -394,17 +394,17 @@ class SchedulingSolver():
                                                  for slot in range(self.num_timeslots)])
 
         if self.verbose:    
-            print("Aantal ploegen: {}".format(self.total_groups))
-            print("Aantal boten: {}".format(self.num_boats))
-            print("Aantal unieke tijdstippen: {}".format(self.num_options))
-            print("Oplossingsscore: {}".format(evaluate_permutation(solution, self)))
-            print("Maximale score: {}".format(maximum_score))
+            print("Number of teams: {}".format(self.total_groups))
+            print("Available boats per option: {}".format(self.num_boats))
+            print("Available options: {}".format(self.num_options))
+            print("Solution score: {}".format(evaluate_permutation(solution, self)))
+            print("Maximum score: {}".format(maximum_score))
             print("")
 
             for day in range(self.num_days):
-                print("Dag {}:".format(day + 1))
+                print("Day {}:".format(day + 1))
                 for slot in range(self.num_timeslots):
-                    print("\tTijdstip {}: {}".format(slot + 1, ", ".join([str(x) for x in days[day][slot]])))
+                    print("\tTimeslot {}: {}".format(slot + 1, ", ".join([str(x) for x in days[day][slot]])))
                     for x in days[day][slot]:
                         print("\t\t{} ({}/{})".format(x, x.availability(day * self.num_timeslots + slot), x.num_members))
                 print("")
