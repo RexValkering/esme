@@ -15,7 +15,6 @@ def teams_from_solution(solution, assignable_individuals):
         list of SchedulingGroup instances
     """
     generated_teams = defaultdict(list)
-    individual_offset = 0
 
     # Add all individuals to a group list, then create the group based on its members
     for i, category in enumerate(assignable_individuals):

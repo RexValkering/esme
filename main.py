@@ -418,50 +418,44 @@ class SchedulingSolver():
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
                                              for slot in range(self.num_timeslots)])
 
-    def report(self):
-
-        maximum_score = self.maximum_score()
-
-        # Select best and report on results
-        print("Best result:")
-        print(self.solution)
+    def report_clustering(self):
+        """Print info about the clustering solution."""
+        print("Generated groups:")
         print("")
 
-        if self.assignable_individuals:
-            print("Generated groups:")
+        tables = []
+        groups_per_row = 3
+
+        for i, group in enumerate(self.solution_groups):
+            if i % groups_per_row == 0:
+                tables.append({'headers': [], 'data': []})
+
+            tables[-1]['headers'].append(group.name)
+            if self.num_traits:
+                tables[-1]['data'].append(["{} ({})".format(
+                    member.name, ', '.join([str(x) for x in member.traits])
+                ) for member in group.members])
+            else:
+                tables[-1]['data'].append(["{}".format(member.name)
+                                           for member in group.members])
+
+        for table in tables:
+            data = table['data']
+            rows = [
+                [data[k][j] if len(data[k]) > j else '' for k in range(len(data))]
+                for j in range(max([len(data[k]) for k in range(len(data))]))
+            ]
+            print(tabulate(rows, headers=table['headers']))
             print("")
+        print("")
 
-            tables = []
-            groups_per_row = 3
-
-            for i, group in enumerate(self.solution_groups):
-                if i % groups_per_row == 0:
-                    tables.append({'headers': [], 'data': []})
-
-                tables[-1]['headers'].append(group.name)
-                if self.num_traits:
-                    tables[-1]['data'].append(["{} ({})".format(
-                        member.name, ', '.join([str(x) for x in member.traits])
-                    ) for member in group.members])
-                else:
-                    tables[-1]['data'].append(["{}".format(member.name)
-                                               for member in group.members])
-
-            for table in tables:
-                data = table['data']
-                rows = [
-                    [data[k][j] if len(data[k]) > j else '' for k in range(len(data))]
-                    for j in range(max([len(data[k]) for k in range(len(data))]))
-                ]
-                print(tabulate(rows, headers=table['headers']))
-                print("")
-            print("")
-
+    def report_scheduling(self):
+        """Print info about the scheduling solution."""
         print("Number of teams: {}".format(self.total_groups))
         print("Available boats per option: {}".format(self.num_boats))
         print("Available options: {}".format(self.num_options))
         print("Solution score: {}".format(evaluate_permutation(self.solution, self)))
-        print("Maximum score: {}".format(maximum_score))
+        print("Maximum score: {}".format(self.maximum_score()))
         print("")
 
         for day in range(self.num_days):
@@ -473,6 +467,18 @@ class SchedulingSolver():
                     print("\t\t{} ({}/{})".format(
                         x, x.availability(day * self.num_timeslots + slot), x.num_members))
             print("")
+
+    def report(self):
+
+        # Select best and report on results
+        print("Best result:")
+        print(self.solution)
+        print("")
+
+        if self.assignable_individuals:
+            self.report_clustering()
+
+        self.report_scheduling()
 
 
 def main():
