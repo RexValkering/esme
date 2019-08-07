@@ -4,7 +4,7 @@ from deap import tools
 from entities import SchedulingGroup
 
 
-def generate_teams_from_solution(solution, assignable_individuals):
+def teams_from_solution(solution, assignable_individuals):
     """Generate teams from the individuals that were scheduled.
 
     Args:
@@ -29,6 +29,22 @@ def generate_teams_from_solution(solution, assignable_individuals):
             for g, members in generated_teams.items()]
 
 
+def sorted_teams_from_solution(solution, assignable_individuals):
+    """Generate teams and sort them by id.
+
+    Args:
+        solution: the solution permutation
+        assignable_individuals: the individuals to assign to temporary groups
+
+    Returns:
+        list of SchedulingGroup instances
+    """
+    return sorted(
+        teams_from_solution(solution, assignable_individuals),
+        key=lambda x: x.id
+    )
+
+
 def evaluate_permutation(solution, solver, split_score=False):
     """Calculate the fitness score of a solution.
 
@@ -42,7 +58,7 @@ def evaluate_permutation(solution, solver, split_score=False):
     scheduling_score = 0.0
 
     # Create temporary SchedulingGroup objects for measurements.
-    generated_groups = generate_teams_from_solution(solution, solver.assignable_individuals)
+    generated_groups = teams_from_solution(solution, solver.assignable_individuals)
 
     for group in generated_groups:
 

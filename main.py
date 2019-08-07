@@ -9,7 +9,7 @@ import yaml
 import progressbar
 from tabulate import tabulate
 
-from common import generate_teams_from_solution, evaluate_permutation, parse_args, \
+from common import sorted_teams_from_solution, evaluate_permutation, parse_args, \
     mutate_permutation
 from entities import SchedulingGroup, SchedulingIndividual
 from parsers import parse_individuals_file
@@ -35,6 +35,9 @@ class SchedulingSolver():
     population = None
     indpb = None
 
+    solution_groups = None
+    solution_schedule = None
+
     def __init__(self, args):
         if not args:
             return
@@ -56,7 +59,6 @@ class SchedulingSolver():
         if self.input_files:
             for input_file in self.input_files:
                 self.parse_input_file(input_file)
-            print(self.assignable_individuals)
         else:
             self.generate_groups()
 
@@ -162,54 +164,74 @@ class SchedulingSolver():
         for key, value in parameters.items():
             setattr(self, key, value)
 
+    def generate_individual(self, offset=0):
+        """Generate a single individual.
+
+        Args:
+            offset: identifier of the individual
+
+        Returns:
+            SchedulingIndividual
+        """
+        individual = SchedulingIndividual('Individual {}'.format(offset))
+        individual.randomize_preferences(self.num_options, self.availability_likelihood)
+        return individual
+
+    def generate_group(self, group_size, group_offset, individual_offset):
+        """Generate a single group of random individuals.
+
+        Args:
+            group_size: number of individuals to generate
+
+        Returns:
+            SchedulingGroup
+        """
+        individuals = [self.generate_individual(i) for i in range(individual_offset,
+                                                                  individual_offset + group_size)]
+        group = SchedulingGroup('Group {}'.format(group_offset), individuals,
+                                num_options=self.num_options)
+        return group
+
+    def save_generated_to_file(self, filename):
+        """Save the generated groups and individuals to an availability CSV.
+
+        Args:
+            filename: path to CSV file to save to.
+        """
+        with open(filename, 'w') as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(['Name', 'Group'] + self.list_of_timeslots())
+
+            # Write groups
+            for i, group in enumerate(self.assignable_groups):
+                for individual in group.members:
+                    writer.writerow([individual.name, i] + individual.preferences)
+
+            # Write individuals
+            for individual in self.assignable_individuals[0]:
+                writer.writerow([individual.name, ''] + individual.preferences)
+
     def generate_groups(self):
         """Generate the groups based on the program parameters"""
-        offset = 0
-
-        group_sizes = list(range(self.min_members_per_group, self.max_members_per_group + 1))
 
         if self.generate == 'groups':
+            # Generate groups of random group sizes
+            group_sizes = list(range(self.min_members_per_group, self.max_members_per_group + 1))
+            offset = 0
+
             for j in range(self.num_to_generate):
-
                 group_size = random.choice(group_sizes)
-
-                # Create a standard group
-                individuals = [SchedulingIndividual('Individual {}'.format(i))
-                               for i in range(offset, offset + group_size)]
-                group = SchedulingGroup('Group {}'.format(j), individuals,
-                                        num_options=self.num_options)
-
-                # Randomize the availability of a groups members
-                group.randomize_preferences(self.availability_likelihood)
-
-                self.assignable_groups.append(group)
+                self.assignable_groups.append(self.generate_group(group_size, j, offset))
                 offset += group_size
 
-            if self.verbose:
-                print("Generated {} groups".format(self.num_to_generate))
-
         if self.generate == 'individuals':
-            individuals = [SchedulingIndividual('Individual {}'.format(i))
-                           for i in range(self.num_to_generate)]
-
-            for individual in individuals:
-                individual.randomize_preferences(self.num_options, self.availability_likelihood)
-
+            # Generate individuals
+            individuals = [self.generate_individual(i) for i in range(self.num_to_generate)]
             self.assignable_individuals.append(individuals)
 
         # Save to file
         if self.groups_save_file:
-            with open(self.groups_save_file, 'w') as outfile:
-                writer = csv.writer(outfile)
-                writer.writerow(['Name', 'Group'] + self.list_of_timeslots())
-                # Write groups
-                for i, group in enumerate(self.assignable_groups):
-                    for individual in group.members:
-                        writer.writerow([individual.name, i] + individual.preferences)
-
-                # Write individuals
-                for individual in self.assignable_individuals[0]:
-                    writer.writerow([individual.name, ''] + individual.preferences)
+            self.save_generated_to_file(self.groups_save_file)
 
     def generate_schedule_from_solution(self, scheduling_solution, all_groups):
         """Given a solution, create a [day -> slot -> groups] schedule.
@@ -222,6 +244,8 @@ class SchedulingSolver():
             days[day] = {}
             for slot in range(self.num_timeslots):
                 days[day][slot] = []
+
+        # print(scheduling_solution)
 
         for i in range(self.courses_per_team * self.total_groups):
             assigned_option = scheduling_solution[i]
@@ -248,7 +272,11 @@ class SchedulingSolver():
                 itertools.product(range(self.num_days), range(self.num_timeslots))]
 
     def maximum_score(self):
-        """Get the maximum possible score."""
+        """Get the maximum possible score.
+
+        Returns:
+            int: maximum possible score for solutions
+        """
         num_generated_groups = sum(
             self.get_number_of_groups_by_number_of_individuals(len(individuals))
             for individuals in self.assignable_individuals
@@ -257,21 +285,12 @@ class SchedulingSolver():
         return num_generated_groups + self.courses_per_team * (num_generated_groups +
                                                                len(self.assignable_groups))
 
-    def solve(self):
-        """Setup the deap module and find the best permutation."""
-
-        maximum_score = self.maximum_score()
-
-        if maximum_score <= 0.0:
-            print("Nothing to solve, aborting.")
-            exit()
-
+    def setup_deap(self):
         creator.create("FitnessMax", base.Fitness, weights=(1.0,))
 
         # An individual is a permutation of numbers
         creator.create("Individual", list, fitness=creator.FitnessMax)
         toolbox = base.Toolbox()
-
 
         def generate_permutation():
             """Generate a fully random starting permutation"""
@@ -306,12 +325,24 @@ class SchedulingSolver():
         toolbox.register("evaluate", evaluate_permutation, solver=self)
 
         # Reproduction and mutation
-        #toolbox.register("mate", tools.cxOrdered, indpb=0.05)
         toolbox.register("mate", lambda a, b: (a, b))
         toolbox.register("mutate", mutate_permutation, indpb=self.indpb)
 
         # Selection method
         toolbox.register("select", tools.selTournament, tournsize=3)
+        return toolbox
+
+
+    def solve(self):
+        """Setup the deap module and find the best permutation."""
+
+        maximum_score = self.maximum_score()
+
+        if maximum_score <= 0.0:
+            print("Nothing to solve, aborting.")
+            exit()
+
+        toolbox = self.setup_deap()
 
         # Create population
         population = toolbox.population(n=self.population)
@@ -326,6 +357,7 @@ class SchedulingSolver():
         ]
 
         with progressbar.ProgressBar(max_value=self.generations, widgets=widgets) as bar:
+
             maximum_fit = 0.0
 
             for gen in range(self.generations):
@@ -348,9 +380,17 @@ class SchedulingSolver():
                 result = tools.selBest(population, k=1)[0]
 
             bar.update(self.generations)
+
+        self.solution = result
+        self.solution_generated_groups = sorted_teams_from_solution(self.solution,
+                                                                    self.assignable_individuals)
+        self.solution_groups = self.assignable_groups + self.solution_generated_groups
+        self.solution_schedule = self.generate_schedule_from_solution(self.solution[-1],
+                                                                      self.solution_groups)
+
         return result
 
-    def save_results_to_file(self, all_groups, schedule):
+    def save_results_to_file(self):
         """Save the solution schedule to file.
 
         Args:
@@ -363,7 +403,7 @@ class SchedulingSolver():
             writer.writerow(['Name', 'Group'] +
                             ['Trait {}'.format(i+1) for i in range(self.num_traits)] +
                             self.list_of_timeslots())
-            for group in all_groups:
+            for group in self.solution_groups:
                 for member in group.members:
                     writer.writerow([member.name, group.name] + member.traits +
                                     member.availability())
@@ -374,88 +414,75 @@ class SchedulingSolver():
             writer = csv.writer(outfile)
             writer.writerow(['Day'] + list(range(1, self.num_timeslots + 1)))
             for day in range(self.num_days):
-                slots = schedule[day]
+                slots = self.solution_schedule[day]
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
                                              for slot in range(self.num_timeslots)])
 
-    def report(self, solution):
-
-        generated_groups = sorted(
-            generate_teams_from_solution(solution, self.assignable_individuals),
-            key=lambda x: x.id
-        )
+    def report(self):
 
         maximum_score = self.maximum_score()
 
         # Select best and report on results
-        if self.verbose:
-            print("Best result:")
-            print(solution)
+        print("Best result:")
+        print(self.solution)
+        print("")
+
+        if self.assignable_individuals:
+            print("Generated groups:")
             print("")
 
-            if (self.assignable_individuals):
-                print("Generated groups:")
+            tables = []
+            groups_per_row = 3
+
+            for i, group in enumerate(self.solution_groups):
+                if i % groups_per_row == 0:
+                    tables.append({'headers': [], 'data': []})
+
+                tables[-1]['headers'].append(group.name)
+                if self.num_traits:
+                    tables[-1]['data'].append(["{} ({})".format(
+                        member.name, ', '.join([str(x) for x in member.traits])
+                    ) for member in group.members])
+                else:
+                    tables[-1]['data'].append(["{}".format(member.name)
+                                               for member in group.members])
+
+            for table in tables:
+                data = table['data']
+                rows = [
+                    [data[k][j] if len(data[k]) > j else '' for k in range(len(data))]
+                    for j in range(max([len(data[k]) for k in range(len(data))]))
+                ]
+                print(tabulate(rows, headers=table['headers']))
                 print("")
-
-                tables = []
-                groups_per_row = 3
-
-                for i, group in enumerate(generated_groups):
-                    if i % groups_per_row == 0:
-                        tables.append({'headers': [], 'data': []})
-
-                    tables[-1]['headers'].append(group.name)
-                    if self.num_traits:
-                        tables[-1]['data'].append(["{} ({})".format(
-                            member.name, ', '.join([str(x) for x in member.traits])
-                        ) for member in group.members])
-                    else:
-                        tables[-1]['data'].append(["{}".format(member.name)
-                                                   for member in group.members])
-
-                for table in tables:
-                    data = table['data']
-                    rows = [
-                        [data[k][j] if len(data[k]) > j else '' for k in range(len(data))]
-                        for j in range(max([len(data[k]) for k in range(len(data))]))
-                    ]
-                    print(tabulate(rows, headers=table['headers']))
-                    print("")
-                print("")
-
-        all_groups = self.assignable_groups + generated_groups
-
-        # Retrieve the schedule
-        schedule = self.generate_schedule_from_solution(solution[-1], all_groups)
-
-        if self.output_prefix:
-            self.save_results_to_file(all_groups, schedule)
-
-        if self.verbose:    
-            print("Number of teams: {}".format(self.total_groups))
-            print("Available boats per option: {}".format(self.num_boats))
-            print("Available options: {}".format(self.num_options))
-            print("Solution score: {}".format(evaluate_permutation(solution, self)))
-            print("Maximum score: {}".format(maximum_score))
             print("")
 
-            for day in range(self.num_days):
-                print("Day {}:".format(day + 1))
-                for slot in range(self.num_timeslots):
-                    print("\tTimeslot {}: {}".format(slot + 1, ", ".join(
-                        [str(x) for x in schedule[day][slot]])))
-                    for x in schedule[day][slot]:
-                        print("\t\t{} ({}/{})".format(
-                            x, x.availability(day * self.num_timeslots + slot), x.num_members))
-                print("")
+        print("Number of teams: {}".format(self.total_groups))
+        print("Available boats per option: {}".format(self.num_boats))
+        print("Available options: {}".format(self.num_options))
+        print("Solution score: {}".format(evaluate_permutation(self.solution, self)))
+        print("Maximum score: {}".format(maximum_score))
+        print("")
+
+        for day in range(self.num_days):
+            print("Day {}:".format(day + 1))
+            for slot in range(self.num_timeslots):
+                print("\tTimeslot {}: {}".format(slot + 1, ", ".join(
+                    [str(x) for x in self.solution_schedule[day][slot]])))
+                for x in self.solution_schedule[day][slot]:
+                    print("\t\t{} ({}/{})".format(
+                        x, x.availability(day * self.num_timeslots + slot), x.num_members))
+            print("")
 
 
 def main():
     
     args = parse_args()
     solver = SchedulingSolver(args)
-    solution = solver.solve()
-    solver.report(solution)
+    solver.solve()
+    if solver.output_prefix:
+        solver.save_results_to_file()
+    solver.report()
 
 
 if __name__ == '__main__':
