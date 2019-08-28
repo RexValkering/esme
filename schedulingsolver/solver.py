@@ -293,12 +293,12 @@ class SchedulingSolver():
             for individuals in self.assignable_individuals
         ) if self.assignable_individuals else 0
 
-        clustering_score = num_generated_groups
+        assignment_score = num_generated_groups
         solution_score = self.courses_per_team * (num_generated_groups + len(self.assignable_groups))
         if split:
-            return clustering_score, solution_score
+            return assignment_score, solution_score
         else:
-            return clustering_score + solution_score
+            return assignment_score + solution_score
 
     def setup_deap(self):
         """Initialize the deap module."""
@@ -403,11 +403,12 @@ class SchedulingSolver():
 
                 fits = toolbox.map(toolbox.evaluate, offspring)
                 for fit, ind in zip(fits, offspring):
-                    maximum_fit = max(maximum_fit, fit[0])
-                    if int(fit[0]) == maximum_score:
+                    score = fit[0].score()
+                    maximum_fit = max(maximum_fit, score)
+                    if int(score) == maximum_score:
                         result = ind
                         break
-                    ind.fitness.values = fit
+                    ind.fitness.values = score, 
 
                 population = toolbox.select(offspring, k=len(population))
 
@@ -456,7 +457,7 @@ class SchedulingSolver():
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
                                              for slot in range(self.num_timeslots)])
 
-    def report_clustering(self):
+    def report_assignment(self):
         """Print info about the clustering solution."""
         print("Generated groups:")
         print("")
@@ -492,10 +493,9 @@ class SchedulingSolver():
         print("Number of teams: {}".format(self.total_groups))
         print("Available boats per option: {}".format(self.num_boats))
         print("Available options: {}".format(self.num_options))
-        clustering_score, scheduling_score = evaluate_permutation(self.solution, self, True)
-        clustering_max, scheduling_max = self.maximum_score(True)
-        print("Clustering score: {}/{}".format(clustering_score, clustering_max))
-        print("Scheduling score: {}/{}".format(scheduling_score, scheduling_max))
+        score = evaluate_permutation(self.solution, self)[0]
+        assignment_max, scheduling_max = self.maximum_score(True)
+        score.report([assignment_max, scheduling_max])
         print("")
 
         for day in range(self.num_days):
@@ -516,6 +516,6 @@ class SchedulingSolver():
         print("")
 
         if self.assignable_individuals:
-            self.report_clustering()
+            self.report_assignment()
 
         self.report_scheduling()

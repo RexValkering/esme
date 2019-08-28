@@ -1,12 +1,12 @@
-from collections import Counter
+from collections import Counter, defaultdict
 
 from deap import tools
 
-from common import teams_from_solution
+from common import teams_from_solution, SolutionScore
 from .iterator import SolverMethod
 
 
-def evaluate_permutation(solution, solver, split_score=False):
+def evaluate_permutation(solution, solver):
     """Calculate the fitness score of a solution.
 
     Args:
@@ -15,10 +15,10 @@ def evaluate_permutation(solution, solver, split_score=False):
         split_score: whether to split the score (for debugging purposes)
     """
 
-    assignment_score = 0.0
-    scheduling_score = 0.0
-
+    # create score object
     clustering_weight, scheduling_weight = solver.current_step.parameters['weights']
+    score = SolutionScore(clustering_weight, scheduling_weight)
+    trait_weight_sum = sum(solver.trait_weights)
 
     # Create temporary SchedulingGroup objects for measurements.
     generated_groups = teams_from_solution(solution, solver.assignable_individuals)
@@ -29,17 +29,19 @@ def evaluate_permutation(solution, solver, split_score=False):
         if len(group.members) < solver.min_members_per_group:
             continue
 
+        score.assignment['score'] += 1.0
+
         # The penalty is the weighted sum of mean trait differences
         if clustering_weight:
-            penalty = 0
             if solver.num_traits:
                 penalties = [solver.trait_weights[t] *
                              group.trait_cumulative_penalty(t, 0.0, normalize=True)
                              for t in range(solver.num_traits)]
-                penalty = sum(penalties) / sum(solver.trait_weights)
 
-            # Evaluate all traits
-            assignment_score += 1 - min(1.0, penalty)
+                # Store penalties in SolutionScore object.
+                for t, penalty in enumerate(penalties):
+                    trait_key = 'Trait {} differences'.format(t+1)
+                    score.assignment['penalty'][trait_key] += penalty / trait_weight_sum
 
     assignable = solver.assignable_groups + generated_groups
 
@@ -51,9 +53,9 @@ def evaluate_permutation(solution, solver, split_score=False):
 
             # Ensure enough members are available.
             if group.availability(option) >= solver.min_available:
-                scheduling_score += float(group.availability(option)) / group.num_members
+                score.scheduling['score'] += float(group.availability(option)) / group.num_members
             else:
-                scheduling_score -= 1
+                score.scheduling['penalty']['Not enough members'] += 1.0
 
         # Give penalties for one group being twice assigned to the same day.
         for g in range(len(assignable)):
@@ -61,13 +63,9 @@ def evaluate_permutation(solution, solver, split_score=False):
 
             count = Counter(assignments)
             if count.most_common(1)[0][1] > 1:
-                scheduling_score -= 2.0
+                score.scheduling['penalty']['Same day schedule'] += 2.0
 
-    if split_score:
-        return scheduling_score, assignment_score
-
-    combined_score = assignment_score * clustering_weight + scheduling_score * scheduling_weight
-    return combined_score,
+    return score,
 
 
 def mutate_permutation(individual, solver):

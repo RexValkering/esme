@@ -3,6 +3,54 @@ from collections import defaultdict
 from entities import SchedulingGroup
 
 
+class SolutionScore(object):
+
+    def __init__(self, assignment_weight=0.0, scheduling_weight=0.0):
+
+        self.assignment = {
+            'score': 0.0,
+            'penalty': defaultdict(float),
+            'weight': assignment_weight
+        }
+        self.scheduling = {
+            'score': 0.0,
+            'penalty': defaultdict(float),
+            'weight': scheduling_weight
+        }
+
+    def assignment_score(self):
+        return self.assignment['score'] - sum(self.assignment['penalty'].values())
+
+    def scheduling_score(self):
+        return self.scheduling['score'] - sum(self.scheduling['penalty'].values())
+
+    def score(self):
+        return (self.assignment['weight'] * self.assignment_score() +
+                self.scheduling['weight'] * self.scheduling_score())
+
+    def report(self, maximum_scores):
+        print('Solution score: {:.3f}'.format(self.score()))
+
+        for key, scores, score, maximum in (
+            ('Assignment', self.assignment, self.assignment_score(), maximum_scores[0]),
+            ('Scheduling', self.scheduling, self.scheduling_score(), maximum_scores[1])
+        ):
+            print('')
+            print('{} score:'.format(key))
+            print('  - Score: {:.3f}'.format(score))
+            print('  - Maximum score: {:.3f}'.format(maximum))
+            if scores['penalty']:
+                print('  - Original score: {:.3f}'.format(scores['score']))
+                print('  - Penalties:')
+                for name, penalty in scores['penalty'].items():
+                    print('      - {}: -{:.3f}'.format(name, penalty))
+
+    def __gt__(self, other):
+        return (self.score() > other.score()
+                if isinstance(other, SolutionScore)
+                else self.score() > other)
+
+
 def teams_from_solution(solution, assignable_individuals):
     """Generate teams from the individuals that were scheduled.
 
@@ -65,7 +113,7 @@ def parse_args():
     group.add_argument('--num_traits', help='number of traits in input csv files')
     group.add_argument('-w', '--trait_weights', nargs='*', help='trait weights')
     group.add_argument('-m', '--solution_mode',
-                       help="1: clustering only; 2: scheduling only; 3; both clustering and scheduling; 4: alternating",
+                       help="1: assignment only; 2: scheduling only; 3; both assignment and scheduling; 4: alternating",
                        type=int, default=3)
 
     group = parser.add_argument_group('parameters')
