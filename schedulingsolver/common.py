@@ -2,6 +2,9 @@ import argparse
 from collections import Counter, defaultdict
 from deap import tools
 from entities import SchedulingGroup
+from enum import Enum
+
+from .iterator import SolverMethod
 
 
 def teams_from_solution(solution, assignable_individuals):
@@ -56,6 +59,8 @@ def evaluate_permutation(solution, solver, split_score=False):
     assignment_score = 0.0
     scheduling_score = 0.0
 
+    clustering_weight, scheduling_weight = solver.current_step.parameters['weights']
+
     # Create temporary SchedulingGroup objects for measurements.
     generated_groups = teams_from_solution(solution, solver.assignable_individuals)
 
@@ -66,45 +71,55 @@ def evaluate_permutation(solution, solver, split_score=False):
             continue
 
         # The penalty is the weighted sum of mean trait differences
-        penalty = 0
-        if solver.num_traits:
-            penalties = [solver.trait_weights[t] *
-                         group.trait_cumulative_penalty(t, 0.0, normalize=True)
-                         for t in range(solver.num_traits)]
-            penalty = sum(penalties) / sum(solver.trait_weights)
+        if clustering_weight:
+            penalty = 0
+            if solver.num_traits:
+                penalties = [solver.trait_weights[t] *
+                             group.trait_cumulative_penalty(t, 0.0, normalize=True)
+                             for t in range(solver.num_traits)]
+                penalty = sum(penalties) / sum(solver.trait_weights)
 
-        # Evaluate all traits
-        assignment_score += 1 - min(1.0, penalty)
+            # Evaluate all traits
+            assignment_score += 1 - min(1.0, penalty)
 
     assignable = solver.assignable_groups + generated_groups
 
     # Evaluate schedules.
-    for i in range(solver.courses_per_team * (len(generated_groups) + len(solver.assignable_groups))):
-        option = solution[-1][i]
-        group = assignable[i // solver.courses_per_team]
+    if scheduling_weight:
+        for i in range(solver.courses_per_team * (len(generated_groups) + len(solver.assignable_groups))):
+            option = solution[-1][i]
+            group = assignable[i // solver.courses_per_team]
 
-        # Ensure enough members are available.
-        if group.availability(option) >= solver.min_available:
-            scheduling_score += float(group.availability(option)) / group.num_members
-        else:
-            scheduling_score -= 1
+            # Ensure enough members are available.
+            if group.availability(option) >= solver.min_available:
+                scheduling_score += float(group.availability(option)) / group.num_members
+            else:
+                scheduling_score -= 1
 
-    # Give penalties for one group being twice assigned to the same day.
-    for g in range(len(assignable)):
-        assignments = [solution[-1][g * solver.courses_per_team + i] // solver.num_timeslots for i in range(solver.courses_per_team)]
+        # Give penalties for one group being twice assigned to the same day.
+        for g in range(len(assignable)):
+            assignments = [solution[-1][g * solver.courses_per_team + i] // solver.num_timeslots for i in range(solver.courses_per_team)]
 
-        count = Counter(assignments)
-        if count.most_common(1)[0][1] > 1:
-            scheduling_score -= 2.0
+            count = Counter(assignments)
+            if count.most_common(1)[0][1] > 1:
+                scheduling_score -= 2.0
 
     if split_score:
         return scheduling_score, assignment_score
-    return scheduling_score + assignment_score,
+
+    combined_score = assignment_score * clustering_weight + scheduling_score * scheduling_weight
+    return combined_score,
 
 
-def mutate_permutation(individual, indpb):
-    for item in individual:
-        tools.mutShuffleIndexes(item, indpb)
+def mutate_permutation(individual, solver):
+    method, parameters = solver.current_step.method, solver.current_step.parameters
+    
+    if method in (SolverMethod.CLUSTERING, SolverMethod.BOTH):
+        for item in individual[:-1]:
+            tools.mutShuffleIndexes(item, parameters['inpdb'])
+
+    if method in (SolverMethod.SCHEDULING, SolverMethod.BOTH):
+        tools.mutShuffleIndexes(individual[-1], parameters['inpdb'])
     return individual, 
 
 
@@ -129,6 +144,9 @@ def parse_args():
     
     group.add_argument('--num_traits', help='number of traits in input csv files')
     group.add_argument('-w', '--trait_weights', nargs='*', help='trait weights')
+    group.add_argument('-m', '--solution_mode',
+                       help="1: clustering only; 2: scheduling only; 3; both clustering and scheduling; 4: alternating",
+                       type=int, default=3)
 
     group = parser.add_argument_group('parameters')
     group.add_argument('-min', '--min_members_per_group', help='minimum number of members per group', type=int)
