@@ -1,20 +1,19 @@
-import numpy as np
 import random
-from deap import creator, base, tools, algorithms
-from collections import Counter, defaultdict
-import os
+from collections import Counter
 import csv
 import itertools
 import yaml
+
 import progressbar
 from tabulate import tabulate
+import numpy as np
+from deap import creator, base, tools, algorithms
 
-from .common import sorted_teams_from_solution, evaluate_permutation, parse_args, \
-    mutate_permutation
+from .common import sorted_teams_from_solution
+from .algorithms import evaluate_permutation, mutate_permutation
 from .entities import SchedulingGroup, SchedulingIndividual
 from .parsers import parse_individuals_file
 from .profiles import DefaultIterationProfile
-from .iterator import SolverMethod
 
 
 class SchedulingSolver():
