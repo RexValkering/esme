@@ -1,6 +1,5 @@
 import unittest
-from schedulingsolver.common import SolverMethod
-from schedulingsolver.iterator import SolverPhase, SolverIterator
+from schedulingsolver.iterator import SolverPhase, SolverIterator, SolverProgressionPhase, SolverMethod
 
 
 class TestStringMethods(unittest.TestCase):
@@ -56,6 +55,27 @@ class TestStringMethods(unittest.TestCase):
                     [SolverMethod.BOTH] * 5)
 
         self.helper_iterator(iteration, expected)
+
+    def test_progression(self):
+        iteration = SolverIterator([
+            SolverProgressionPhase(SolverMethod.CLUSTERING, 5)
+        ])
+
+        for i in range(3):
+            next(iteration)
+
+        iteration.register_fitness(1.0)
+
+        for i in range(3):
+            next(iteration)
+
+        iteration.register_fitness(1.0)
+
+        for i in range(2):
+            next(iteration)
+
+        with self.assertRaises(StopIteration):
+            next(iteration)
 
 if __name__ == '__main__':
     unittest.main()

@@ -13,7 +13,7 @@ from .common import sorted_teams_from_solution
 from .algorithms import evaluate_permutation, mutate_permutation
 from .entities import SchedulingGroup, SchedulingIndividual
 from .parsers import parse_individuals_file
-from .profiles import DefaultIterationProfile
+from .profiles import DefaultIterationProfile, ProgressionIterationProfile
 
 
 class SchedulingSolver():
@@ -50,7 +50,7 @@ class SchedulingSolver():
 
         self.load_scheduling_parameters(args)
 
-        self.solution_iterator = DefaultIterationProfile(self.generations)
+        self.solution_iterator = DefaultIterationProfile(10)
 
         # Files
         self.input_files = args.input
@@ -411,6 +411,7 @@ class SchedulingSolver():
                     ind.fitness.values = score, 
 
                 population = toolbox.select(offspring, k=len(population))
+                self.solution_iterator.register_fitness(maximum_fit)
 
                 if result:
                     break

@@ -44,8 +44,8 @@ class SolverPhase(object):
     """
 
     def __init__(self, method, iterations=None, maxtime=None, **kwargs):
-        if iterations is None and maxtime is None:
-            raise ValueError("Either iterations or maxtime needs to be defined.")
+        # if iterations is None and maxtime is None:
+            # raise ValueError("Either iterations or maxtime needs to be defined.")
 
         self.method = method
         self.iterations = iterations
@@ -64,6 +64,9 @@ class SolverPhase(object):
         """
         self.global_offset = offset
 
+    def register_fitness(self, fitness):
+        pass
+
     def _generate_step(self):
         """Generate a SolverStep item for this phase.
 
@@ -78,6 +81,12 @@ class SolverPhase(object):
             )
         return SolverStep(self.global_offset + self.step, self.method, **self.parameters)
 
+    def _stop_iteration(self):
+        return (
+            (self.iterations is not None and self.step >= self.iterations) or
+            (self.maxtime is not None and time.time() - self.starting_time > self.maxtime)
+        )
+
     def __iter__(self):
         self.step = 0
         return self
@@ -86,13 +95,33 @@ class SolverPhase(object):
         if self.starting_time is None:
             self.starting_time = time.time()
 
-        if ((self.iterations is not None and self.step >= self.iterations) or
-                (self.maxtime is not None and time.time() - self.starting_time > self.maxtime)):
+        if self._stop_iteration():
             raise StopIteration
 
         result = self._generate_step()
         self.step += 1
         return result
+
+
+class SolverProgressionPhase(SolverPhase):
+
+    def __init__(self, method, max_iterations_without_progress, **parameters):
+        self.max_iterations_without_progress = max_iterations_without_progress
+        self.last_step_with_progress = 0
+        self.last_fitness_value = -10**6
+        super().__init__(method, **parameters)
+
+    def register_fitness(self, fitness):
+        """Register the latest fitness value."""
+        if fitness <= self.last_fitness_value:
+            return
+
+        self.last_fitness_value = fitness
+        self.last_step_with_progress = self.step
+
+    def _stop_iteration(self):
+        # print(self.step, self.last_step_with_progress, self.max_iterations_without_progress)
+        return self.step - self.last_step_with_progress >= self.max_iterations_without_progress
 
 
 class SolverIterator(object):
@@ -123,12 +152,15 @@ class SolverIterator(object):
         self.phases.append(phase)
         self._set_offset()
 
+    def register_fitness(self, fitness):
+        self.phases[self._current_phase].register_fitness(fitness)
+
     def _set_offset(self):
         """set the offset for all underlying phases."""
         global_offset = 0
         for phase in self.phases:
             phase.set_offset(global_offset)
-            global_offset += phase.iterations
+            global_offset += (phase.iterations if phase.iterations else 0)
 
     def __iter__(self):
         self._current_phase = 0
