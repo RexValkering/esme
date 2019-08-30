@@ -58,6 +58,7 @@ class TestStringMethods(unittest.TestCase):
 
     def test_progression(self):
         iteration = SolverIterator([
+            SolverProgressionPhase(SolverMethod.CLUSTERING, 5),
             SolverProgressionPhase(SolverMethod.CLUSTERING, 5)
         ])
 
@@ -71,9 +72,18 @@ class TestStringMethods(unittest.TestCase):
 
         iteration.register_fitness(1.0)
 
-        for i in range(2):
+        self.assertEqual(iteration._current_phase, 0)
+
+        for i in range(3):
             next(iteration)
 
+        self.assertEqual(iteration._current_phase, 1)
+
+        for i in range(4):
+            next(iteration)
+
+        self.assertEqual(iteration._current_phase, 1)
+        
         with self.assertRaises(StopIteration):
             next(iteration)
 

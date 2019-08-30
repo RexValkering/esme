@@ -1,6 +1,7 @@
 """Contains classes to chain different solver methods."""
 import time
 from enum import Enum
+import progressbar
 
 
 class SolverMethod(Enum):
@@ -67,6 +68,9 @@ class SolverPhase(object):
     def register_fitness(self, fitness):
         pass
 
+    def progression_type(self):
+        return 'time' if self.maxtime is not None else 'generations'
+
     def _generate_step(self):
         """Generate a SolverStep item for this phase.
 
@@ -81,7 +85,7 @@ class SolverPhase(object):
             )
         return SolverStep(self.global_offset + self.step, self.method, **self.parameters)
 
-    def _stop_iteration(self):
+    def stop_iteration(self):
         return (
             (self.iterations is not None and self.step >= self.iterations) or
             (self.maxtime is not None and time.time() - self.starting_time > self.maxtime)
@@ -95,7 +99,7 @@ class SolverPhase(object):
         if self.starting_time is None:
             self.starting_time = time.time()
 
-        if self._stop_iteration():
+        if self.stop_iteration():
             raise StopIteration
 
         result = self._generate_step()
@@ -111,6 +115,9 @@ class SolverProgressionPhase(SolverPhase):
         self.last_fitness_value = -10**6
         super().__init__(method, **parameters)
 
+    def progression_type(self):
+        return 'progression'
+
     def register_fitness(self, fitness):
         """Register the latest fitness value."""
         if fitness <= self.last_fitness_value:
@@ -119,8 +126,7 @@ class SolverProgressionPhase(SolverPhase):
         self.last_fitness_value = fitness
         self.last_step_with_progress = self.step
 
-    def _stop_iteration(self):
-        # print(self.step, self.last_step_with_progress, self.max_iterations_without_progress)
+    def stop_iteration(self):
         return self.step - self.last_step_with_progress >= self.max_iterations_without_progress
 
 
@@ -131,6 +137,11 @@ class SolverIterator(object):
         phases: the phases of this iterator.
     """
 
+    _progressbar = None
+    _widgets = None
+    _current_phase = 0
+    phases = None
+
     def __init__(self, phases):
 
         if not all([isinstance(phase, SolverPhase) for phase in phases]):
@@ -138,7 +149,6 @@ class SolverIterator(object):
 
         self.phases = phases
         self._set_offset()
-        self._current_phase = 0
 
     def add_phase(self, phase):
         """Append a single phase to the SolverIterator.
@@ -155,6 +165,25 @@ class SolverIterator(object):
     def register_fitness(self, fitness):
         self.phases[self._current_phase].register_fitness(fitness)
 
+    def widgets(self):
+        """Return a list of widgets"""
+        if not self._widgets:
+            score_widget = progressbar.DynamicMessage('score', width=4)
+            self._widgets = [
+                progressbar.Percentage(), ' (', progressbar.SimpleProgress(), ') ',
+                progressbar.Bar(),
+                ' [', score_widget, '] ', progressbar.Timer()
+            ]
+
+        return self._widgets
+
+    def progressbar(self, max_value):
+        """Build and return a progress bar."""
+        if not self._progressbar:
+            # phase_types = {phase.progression_type() for phase in self.phases}
+            self._progressbar = progressbar.ProgressBar(max_value=max_value, widgets=self.widgets())
+        return self._progressbar
+
     def _set_offset(self):
         """set the offset for all underlying phases."""
         global_offset = 0
@@ -167,6 +196,7 @@ class SolverIterator(object):
         return self
 
     def __next__(self):
+        print("Phase: {}".format(self._current_phase))
         if self._current_phase >= len(self.phases):
             raise StopIteration
 
@@ -174,5 +204,7 @@ class SolverIterator(object):
         try:
             return next(phase)
         except StopIteration:
+            print("Received StopIteration")
             self._current_phase += 1
             return next(self)
+

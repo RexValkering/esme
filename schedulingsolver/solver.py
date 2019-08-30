@@ -4,7 +4,6 @@ import csv
 import itertools
 import yaml
 
-import progressbar
 from tabulate import tabulate
 import numpy as np
 from deap import creator, base, tools, algorithms
@@ -50,7 +49,8 @@ class SchedulingSolver():
 
         self.load_scheduling_parameters(args)
 
-        self.solution_iterator = DefaultIterationProfile(10)
+        self.solution_iterator = DefaultIterationProfile(self.generations)
+        # self.solution_iterator = ProgressionIterationProfile(10)
 
         # Files
         self.input_files = args.input
@@ -385,40 +385,33 @@ class SchedulingSolver():
 
         # Perform evoluationary algorithm
         result = None
-        score_widget = progressbar.DynamicMessage('score', width=4)
-        widgets = [
-            progressbar.Percentage(), ' (', progressbar.SimpleProgress(), ') ',
-            progressbar.Bar(),
-            ' [', score_widget, '] ', progressbar.Timer()
-        ]
+        progressbar = self.solution_iterator.progressbar(self.generations)
 
-        with progressbar.ProgressBar(max_value=self.generations, widgets=widgets) as bar:
+        maximum_fit = 0.0
 
-            maximum_fit = 0.0
+        for step in self.solution_iterator:
+            self.current_step = step
+            progressbar.update(step.i, score=100 * maximum_fit / maximum_score)
+            offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
 
-            for step in self.solution_iterator:
-                self.current_step = step
-                bar.update(step.i, score=100 * maximum_fit / maximum_score)
-                offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
-
-                fits = toolbox.map(toolbox.evaluate, offspring)
-                for fit, ind in zip(fits, offspring):
-                    score = fit[0].score()
-                    maximum_fit = max(maximum_fit, score)
-                    if int(score) == maximum_score:
-                        result = ind
-                        break
-                    ind.fitness.values = score, 
-
-                population = toolbox.select(offspring, k=len(population))
-                self.solution_iterator.register_fitness(maximum_fit)
-
-                if result:
+            fits = toolbox.map(toolbox.evaluate, offspring)
+            for fit, ind in zip(fits, offspring):
+                score = fit[0].score()
+                maximum_fit = max(maximum_fit, score)
+                if int(score) == maximum_score:
+                    result = ind
                     break
-            else:
-                result = tools.selBest(population, k=1)[0]
+                ind.fitness.values = score, 
 
-            bar.update(self.generations)
+            population = toolbox.select(offspring, k=len(population))
+            self.solution_iterator.register_fitness(maximum_fit)
+
+            if result:
+                break
+        else:
+            result = tools.selBest(population, k=1)[0]
+
+        progressbar.update(self.generations)
 
         self.solution = result
 
