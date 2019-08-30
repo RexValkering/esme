@@ -49,8 +49,8 @@ class SchedulingSolver():
 
         self.load_scheduling_parameters(args)
 
-        self.solution_iterator = DefaultIterationProfile(self.generations)
-        # self.solution_iterator = ProgressionIterationProfile(10)
+        # self.solution_iterator = DefaultIterationProfile(self.generations)
+        self.solution_iterator = ProgressionIterationProfile(25)
 
         # Files
         self.input_files = args.input
@@ -385,13 +385,13 @@ class SchedulingSolver():
 
         # Perform evoluationary algorithm
         result = None
-        progressbar = self.solution_iterator.progressbar(self.generations)
+        self.solution_iterator.initialize_progressbar()
 
         maximum_fit = 0.0
 
         for step in self.solution_iterator:
             self.current_step = step
-            progressbar.update(step.i, score=100 * maximum_fit / maximum_score)
+            self.solution_iterator.update_progressbar(100 * maximum_fit / maximum_score)
             offspring = algorithms.varAnd(population, toolbox, cxpb=0.5, mutpb=0.1)
 
             fits = toolbox.map(toolbox.evaluate, offspring)
@@ -411,7 +411,7 @@ class SchedulingSolver():
         else:
             result = tools.selBest(population, k=1)[0]
 
-        progressbar.update(self.generations)
+        self.solution_iterator.update_progressbar(100 * maximum_fit / maximum_score, final=True)
 
         self.solution = result
 

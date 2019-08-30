@@ -167,22 +167,41 @@ class SolverIterator(object):
 
     def widgets(self):
         """Return a list of widgets"""
+        phase_types = {phase.progression_type() for phase in self.phases}
+
         if not self._widgets:
+            phases_digits = len(str(len(self.phases)))
+            phase_widget = progressbar.DynamicMessage('phase', width=1 + 2 * phases_digits)
             score_widget = progressbar.DynamicMessage('score', width=4)
             self._widgets = [
-                progressbar.Percentage(), ' (', progressbar.SimpleProgress(), ') ',
+                ' [', phase_widget, '] ',
                 progressbar.Bar(),
                 ' [', score_widget, '] ', progressbar.Timer()
             ]
 
         return self._widgets
 
-    def progressbar(self, max_value):
+    def initialize_progressbar(self):
         """Build and return a progress bar."""
         if not self._progressbar:
-            # phase_types = {phase.progression_type() for phase in self.phases}
-            self._progressbar = progressbar.ProgressBar(max_value=max_value, widgets=self.widgets())
+            self._progressbar = progressbar.ProgressBar(max_value=100.0, widgets=self.widgets())
         return self._progressbar
+
+    def update_progressbar(self, score, final=False):
+        self._progressbar.update(self.bar_progress() if not final else 100.0,
+                                 score=score,
+                                 phase=self.phase_progress())
+
+    def bar_progress(self):
+        phase_score = float(self._current_phase)
+        phase = self.phases[self._current_phase]
+        if phase.progression_type() == 'generations':
+            phase_score += float(phase.step) / phase.iterations
+        return 100.0 / len(self.phases) * phase_score
+
+    def phase_progress(self):
+        """Returns a string representation of current phase progress"""
+        return "{}/{}".format(self._current_phase, len(self.phases))
 
     def _set_offset(self):
         """set the offset for all underlying phases."""
@@ -196,7 +215,6 @@ class SolverIterator(object):
         return self
 
     def __next__(self):
-        print("Phase: {}".format(self._current_phase))
         if self._current_phase >= len(self.phases):
             raise StopIteration
 
@@ -204,7 +222,6 @@ class SolverIterator(object):
         try:
             return next(phase)
         except StopIteration:
-            print("Received StopIteration")
             self._current_phase += 1
             return next(self)
 
