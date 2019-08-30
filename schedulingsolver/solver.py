@@ -49,7 +49,6 @@ class SchedulingSolver():
 
         self.load_scheduling_parameters(args)
 
-        # self.solution_iterator = DefaultIterationProfile(self.generations)
         self.solution_iterator = ProgressionIterationProfile(25)
 
         # Files

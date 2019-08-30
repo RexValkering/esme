@@ -32,40 +32,43 @@ def evaluate_permutation(solution, solver):
         score.assignment['score'] += 1.0
 
         # The penalty is the weighted sum of mean trait differences
-        if clustering_weight:
-            if solver.num_traits:
-                penalties = [solver.trait_weights[t] *
-                             group.trait_cumulative_penalty(t, 0.0, normalize=True)
-                             for t in range(solver.num_traits)]
+        if clustering_weight and solver.num_traits:
+            penalties = [solver.trait_weights[t] *
+                         group.trait_cumulative_penalty(t, 0.0, normalize=True)
+                         for t in range(solver.num_traits)]
 
-                # Store penalties in SolutionScore object.
-                for t, penalty in enumerate(penalties):
-                    trait_key = 'Trait {} differences'.format(t+1)
-                    score.assignment['penalty'][trait_key] += penalty / trait_weight_sum
+            # Store penalties in SolutionScore object.
+            for t, penalty in enumerate(penalties):
+                trait_key = 'Trait {} differences'.format(t+1)
+                score.assignment['penalty'][trait_key] += penalty / trait_weight_sum
 
     assignable = solver.assignable_groups + generated_groups
 
     # Evaluate schedules.
     if scheduling_weight:
-        for i in range(solver.courses_per_team * (len(generated_groups) + len(solver.assignable_groups))):
-            option = solution[-1][i]
-            group = assignable[i // solver.courses_per_team]
-
-            # Ensure enough members are available.
-            if group.availability(option) >= solver.min_available:
-                score.scheduling['score'] += float(group.availability(option)) / group.num_members
-            else:
-                score.scheduling['penalty']['Not enough members'] += 1.0
-
-        # Give penalties for one group being twice assigned to the same day.
-        for g in range(len(assignable)):
-            assignments = [solution[-1][g * solver.courses_per_team + i] // solver.num_timeslots for i in range(solver.courses_per_team)]
-
-            count = Counter(assignments)
-            if count.most_common(1)[0][1] > 1:
-                score.scheduling['penalty']['Same day schedule'] += 2.0
-
+        evaluate_schedule(solution, score, solver, assignable)
     return score,
+
+
+def evaluate_schedule(solution, score, solver, assignable):
+    for g in range(solver.courses_per_team * len(assignable)):
+        option = solution[-1][g]
+        group = assignable[g // solver.courses_per_team]
+
+        # Ensure enough members are available.
+        if group.availability(option) >= solver.min_available:
+            score.scheduling['score'] += float(group.availability(option)) / group.num_members
+        else:
+            score.scheduling['penalty']['Not enough members'] += 1.0
+
+    # Give penalties for one group being twice assigned to the same day.
+    for g in range(len(assignable)):
+        assignments = [solution[-1][g * solver.courses_per_team + i] // solver.num_timeslots for i in range(solver.courses_per_team)]
+
+        count = Counter(assignments)
+        if count.most_common(1)[0][1] > 1:
+            score.scheduling['penalty']['Same day schedule'] += 2.0
+
 
 
 def mutate_permutation(individual, solver):
