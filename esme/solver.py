@@ -11,7 +11,7 @@ from deap import creator, base, tools, algorithms
 from .common import sorted_teams_from_solution
 from .algorithms import evaluate_permutation, mutate_permutation, generate_permutation
 from .entities import SchedulingGroup, SchedulingIndividual
-from .parsers import parse_individuals_file
+from .parsers import InputFileParser
 from .profiles import parse_profile
 
 
@@ -114,8 +114,8 @@ class SchedulingSolver():
         Args:
             input_file: file to read
         """
-        individuals_from_file, groups_from_file = parse_individuals_file(
-            input_file, self.num_traits)
+        parser = InputFileParser(input_file, self.num_traits)
+        individuals_from_file, groups_from_file = parser.parse()
         self.assignable_individuals.append(individuals_from_file)
         self.assignable_groups.extend(groups_from_file)
 
