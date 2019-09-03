@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+import random
 
 from deap import tools
 
@@ -69,7 +70,53 @@ def evaluate_schedule(solution, score, solver, assignable):
         if count.most_common(1)[0][1] > 1:
             score.scheduling['penalty']['Same day schedule'] += 2.0
 
+def generate_permutation(solver):
+    """Generate a fully random starting permutation
 
+    Args:
+        solver: SchedulingSolver object
+    """
+    permutation = []
+
+    # Create lists of individual-to-group assignments.
+    groups_offset = len(solver.assignable_groups)
+    for _, individuals_group in enumerate(solver.assignable_individuals):
+
+        # Get the number of groups
+        num_groups = solver.get_number_of_groups_by_number_of_individuals(
+            len(individuals_group))
+
+        options = []
+        if solver.num_traits:
+            # Create groups sorted by the first trait
+            average_group_size = len(individuals_group) / num_groups
+            order = sorted([(individual.traits[0], i)
+                            for i, individual in enumerate(individuals_group)])
+            options = [-1] * len(individuals_group)
+
+            for i, (_, individual_id) in enumerate(order):
+                group = groups_offset + int(i // average_group_size)
+                options[individual_id] = group
+
+            count = Counter(options)
+            for key, value in count.items():
+                options += [key] * (solver.max_members_per_group - value)
+        else:
+            for i in range(groups_offset, num_groups + groups_offset):
+                options.extend([i] * solver.max_members_per_group)
+            random.shuffle(options)
+
+        groups_offset += num_groups
+        permutation.append(options)
+
+    # Create a final list of group schedules.
+    options = []
+    for k in range(solver.num_options):
+        options.extend([k] * solver.num_boats)
+    random.shuffle(options)
+    permutation.append(options)
+
+    return permutation
 
 def mutate_permutation(individual, solver):
     method, parameters = solver.current_step.method, solver.current_step.parameters

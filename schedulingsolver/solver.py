@@ -9,7 +9,7 @@ import numpy as np
 from deap import creator, base, tools, algorithms
 
 from .common import sorted_teams_from_solution
-from .algorithms import evaluate_permutation, mutate_permutation
+from .algorithms import evaluate_permutation, mutate_permutation, generate_permutation
 from .entities import SchedulingGroup, SchedulingIndividual
 from .parsers import parse_individuals_file
 from .profiles import DefaultIterationProfile, ProgressionIterationProfile
@@ -49,7 +49,7 @@ class SchedulingSolver():
 
         self.load_scheduling_parameters(args)
 
-        self.solution_iterator = ProgressionIterationProfile(25)
+        self.solution_iterator = ProgressionIterationProfile(10)
 
         # Files
         self.input_files = args.input
@@ -253,8 +253,6 @@ class SchedulingSolver():
             for slot in range(self.num_timeslots):
                 days[day][slot] = []
 
-        # print(scheduling_solution)
-
         for i in range(self.courses_per_team * self.total_groups):
             assigned_option = solution[-1][i]
             assigned_entity = all_groups[i // self.courses_per_team]
@@ -272,7 +270,6 @@ class SchedulingSolver():
             num_individuals: the number of people to generate groups for
         """
         average_group_size = (self.min_members_per_group + self.max_members_per_group) / 2.0
-        # print(num_individuals, self.min_members_per_group, self.max_members_per_group, int(num_individuals / average_group_size))
 
         return int(num_individuals / average_group_size)
 
@@ -308,50 +305,7 @@ class SchedulingSolver():
         creator.create("Individual", list, fitness=creator.FitnessMax)
         toolbox = base.Toolbox()
 
-        def generate_permutation():
-            """Generate a fully random starting permutation"""
-            permutation = []
-
-            # Create lists of individual-to-group assignments.
-            groups_offset = len(self.assignable_groups)
-            for _, individuals_group in enumerate(self.assignable_individuals):
-
-                # Get the number of groups
-                num_groups = self.get_number_of_groups_by_number_of_individuals(
-                    len(individuals_group))
-
-                options = []
-                if self.num_traits:
-                    average_group_size = len(individuals_group) / num_groups
-                    order = sorted([(individual.traits[0], i)
-                                    for i, individual in enumerate(individuals_group)])
-                    options = [-1] * len(individuals_group)
-
-                    for o, (trait, individual_id) in enumerate(order):
-                        group = groups_offset + int(o // average_group_size)
-                        options[individual_id] = group
-
-                    count = Counter(options)
-                    for key, value in count.items():
-                        options += [key] * (self.max_members_per_group - value)
-                else:
-                    for j in range(groups_offset, num_groups + groups_offset):
-                        options.extend([j] * self.max_members_per_group)
-                    random.shuffle(options)
-
-                groups_offset += num_groups
-                permutation.append(options)
-
-            # Create a final list of group schedules.
-            options = []
-            for k in range(self.num_options):
-                options.extend([k] * self.num_boats)
-            random.shuffle(options)
-            permutation.append(options)
-
-            return permutation
-
-        toolbox.register("permutation", generate_permutation)
+        toolbox.register("permutation", generate_permutation, solver=self)
         toolbox.register("individual", tools.initIterate,
                          creator.Individual, toolbox.permutation)
         toolbox.register("population", tools.initRepeat, list, toolbox.individual)
@@ -387,6 +341,7 @@ class SchedulingSolver():
         self.solution_iterator.initialize_progressbar()
 
         maximum_fit = 0.0
+        maximum_score_object = None
 
         for step in self.solution_iterator:
             self.current_step = step
@@ -396,14 +351,18 @@ class SchedulingSolver():
             fits = toolbox.map(toolbox.evaluate, offspring)
             for fit, ind in zip(fits, offspring):
                 score = fit[0].score()
-                maximum_fit = max(maximum_fit, score)
+                # Update maximum fit
+                if score > maximum_fit:
+                    maximum_fit = score
+                    maximum_score_object = fit[0]
+
                 if int(score) == maximum_score:
                     result = ind
                     break
                 ind.fitness.values = score, 
 
             population = toolbox.select(offspring, k=len(population))
-            self.solution_iterator.register_fitness(maximum_fit)
+            self.solution_iterator.register_fitness(maximum_score_object)
 
             if result:
                 break
@@ -421,6 +380,9 @@ class SchedulingSolver():
                                                                       self.solution_groups)
 
         return result
+
+    def plot_progress(self):
+        self.solution_iterator.plot(self.maximum_score(split=True))
 
     def save_results_to_file(self):
         """Save the solution schedule to file.

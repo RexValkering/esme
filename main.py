@@ -10,6 +10,7 @@ def main():
     if solver.output_prefix:
         solver.save_results_to_file()
     solver.report()
+    solver.plot_progress()
 
 
 if __name__ == '__main__':

@@ -1,6 +1,8 @@
 """Contains classes to chain different solver methods."""
 import time
 from enum import Enum
+
+from matplotlib import pyplot as plt
 import progressbar
 
 
@@ -141,6 +143,7 @@ class SolverIterator(object):
     _widgets = None
     _current_phase = 0
     phases = None
+    score_history = None
 
     def __init__(self, phases):
 
@@ -149,6 +152,9 @@ class SolverIterator(object):
 
         self.phases = phases
         self._set_offset()
+        self.score_history = []
+        self.phase_history = []
+        self.current_step = None
 
     def add_phase(self, phase):
         """Append a single phase to the SolverIterator.
@@ -163,7 +169,13 @@ class SolverIterator(object):
         self._set_offset()
 
     def register_fitness(self, fitness):
-        self.phases[self._current_phase].register_fitness(fitness)
+        """Register the current fitness value.
+
+        Args:
+            fitness: solution score
+        """
+        self.score_history.append(fitness)
+        self.phases[self._current_phase].register_fitness(fitness.score())
 
     def widgets(self):
         """Return a list of widgets"""
@@ -188,11 +200,19 @@ class SolverIterator(object):
         return self._progressbar
 
     def update_progressbar(self, score, final=False):
-        self._progressbar.update(self.bar_progress() if not final else 100.0,
+        """Update the values shown in the progress bar.
+
+        Args:
+            score: current solution score
+        """
+        self._progressbar.update(self.bar_progress(),
                                  score=score,
                                  phase=self.phase_progress())
 
     def bar_progress(self):
+        if self._current_phase >= len(self.phases):
+            return 100.0
+
         phase_score = float(self._current_phase)
         phase = self.phases[self._current_phase]
         if phase.progression_type() == 'generations':
@@ -202,6 +222,46 @@ class SolverIterator(object):
     def phase_progress(self):
         """Returns a string representation of current phase progress"""
         return "{}/{}".format(self._current_phase, len(self.phases))
+
+    def plot(self, maximum_scores, ax=None, savefile=None):
+        """Create a plot of the score progression."""
+        plt.style.use('ggplot')
+        if not ax:
+            figure = plt.figure()
+            plot_ax = figure.add_subplot(1, 1, 1)
+        else:
+            plot_ax = ax
+
+        # Extract relevant values
+        assignment, scheduling = zip(*[(score.assignment_score(), score.scheduling_score())
+                                       for score in self.score_history])
+        total = [assignment[i] + scheduling[i] for i in range(len(assignment))]
+        steps = list(range(len(self.score_history)))
+        zero = [0.0] * len(steps)
+
+        # Draw score progress
+        first = plot_ax.fill_between(steps, zero, assignment, label='Assignment score', alpha=0.3)
+        second = plot_ax.fill_between(steps, assignment, total, label='Scheduling score', alpha=0.3)
+        plot_ax.plot(total, color='grey', linewidth=3)
+
+        # Set labels
+        plot_ax.set_xlabel('generation')
+        plot_ax.set_ylabel('raw score')
+        plot_ax.set_title('Progression of score over time')
+
+        # Draw maximum scores
+        plot_ax.axhline(y=maximum_scores[0], color=first.get_facecolor()[0], linestyle='dashed', alpha=0.5)
+        plot_ax.axhline(y=max(assignment) + maximum_scores[1], color='grey', linestyle='dashed', alpha=0.5)
+
+        # Draw phase transitions
+        for _, step in enumerate(self.phase_history):
+            plot_ax.axvline(x=step, color='grey', linestyle='dashed', alpha=0.5)
+
+        if savefile is not None:
+            figure.savefig(savefile)
+        elif ax is None:
+            plt.legend()
+            plt.show()
 
     def _set_offset(self):
         """set the offset for all underlying phases."""
@@ -215,13 +275,18 @@ class SolverIterator(object):
         return self
 
     def __next__(self):
+        # If the last phase has finished, raise a StopIteration
         if self._current_phase >= len(self.phases):
             raise StopIteration
 
         phase = self.phases[self._current_phase]
         try:
-            return next(phase)
+            # Store and return the next phase step
+            self.current_step = next(phase)
+            return self.current_step
         except StopIteration:
+            # Move on to the next phase
+            self.phase_history.append(self.current_step.i)
             self._current_phase += 1
             return next(self)
 
