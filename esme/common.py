@@ -35,6 +35,9 @@ class SolutionScore(object):
             ('Assignment', self.assignment, self.assignment_score(), maximum_scores[0]),
             ('Scheduling', self.scheduling, self.scheduling_score(), maximum_scores[1])
         ):
+            if not maximum:
+                continue
+                
             print('')
             print('{} score:'.format(key))
             print('  - Score: {:.3f}'.format(score))
@@ -102,6 +105,7 @@ def parse_args():
     group.add_argument('-c', '--config', help='config .yaml file')
 
     group = parser.add_argument_group('general')
+    group.add_argument('-p', '--profile', help='Solution profile to use', choices=['default', 'progression'])
     group.add_argument('--score', help='Score the provided solution files instead.', action='store_true')
     group.add_argument('--generate',
                         help='Set to `individuals` to generate individuals without groups ' + 
@@ -112,9 +116,6 @@ def parse_args():
     
     group.add_argument('--num_traits', help='number of traits in input csv files')
     group.add_argument('-w', '--trait_weights', nargs='*', help='trait weights')
-    group.add_argument('-m', '--solution_mode',
-                       help="1: assignment only; 2: scheduling only; 3; both assignment and scheduling; 4: alternating",
-                       type=int, default=3)
 
     group = parser.add_argument_group('parameters')
     group.add_argument('-min', '--min_members_per_group', help='minimum number of members per group', type=int)
@@ -127,6 +128,5 @@ def parse_args():
     group.add_argument('-l', '--availability_likelihood', help='likelihood of a member being available for an option', type=float)
     group.add_argument('-x', '--generations', help='number of generations to test', type=int)
     group.add_argument('-y', '--population', help='population size per generation', type=int)
-    group.add_argument('-z', '--indpb', help='evolution algorithm parameter', type=float)
     args = parser.parse_args()
     return args

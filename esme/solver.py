@@ -12,7 +12,7 @@ from .common import sorted_teams_from_solution
 from .algorithms import evaluate_permutation, mutate_permutation, generate_permutation
 from .entities import SchedulingGroup, SchedulingIndividual
 from .parsers import parse_individuals_file
-from .profiles import DefaultIterationProfile, ProgressionIterationProfile
+from .profiles import parse_profile
 
 
 class SchedulingSolver():
@@ -40,6 +40,7 @@ class SchedulingSolver():
     solution_groups = None
     solution_schedule = None
     solution_iterator = None
+    profile = None
 
     current_step = None
 
@@ -48,8 +49,7 @@ class SchedulingSolver():
             return
 
         self.load_scheduling_parameters(args)
-
-        self.solution_iterator = ProgressionIterationProfile(10)
+        self.solution_iterator = parse_profile(self.profile)
 
         # Files
         self.input_files = args.input
@@ -150,7 +150,8 @@ class SchedulingSolver():
             'generations': 400,
             'population': 400,
             'indpb': 0.05,
-            'solution_mode': 3
+            'solution_mode': 3,
+            'profile': 'default 400'
         }
 
         # Parse config file. These override default values.
@@ -340,7 +341,7 @@ class SchedulingSolver():
         result = None
         self.solution_iterator.initialize_progressbar()
 
-        maximum_fit = 0.0
+        maximum_fit = -10*6
         maximum_score_object = None
 
         for step in self.solution_iterator:
@@ -362,7 +363,8 @@ class SchedulingSolver():
                 ind.fitness.values = score, 
 
             population = toolbox.select(offspring, k=len(population))
-            self.solution_iterator.register_fitness(maximum_score_object)
+            if maximum_score_object:
+                self.solution_iterator.register_fitness(maximum_score_object)
 
             if result:
                 break
@@ -466,10 +468,6 @@ class SchedulingSolver():
     def report(self):
 
         # Select best and report on results
-        print("Best result:")
-        print(self.solution)
-        print("")
-
         if self.assignable_individuals:
             self.report_assignment()
 

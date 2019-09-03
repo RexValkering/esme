@@ -1,0 +1,20 @@
+# The following parameters are only used for generating groups
+min_members_per_group: 11        # Number of members per groups
+max_members_per_group: 12        # Number of members per groups
+
+# Available slots information
+num_traits: 1
+trait_weights:
+  - 1.0
+
+num_boats: 3                    # Number of boats per timeslot  
+num_timeslots: 4                # Number of timeslots per day
+num_days: 5                     # Number of days available
+courses_per_team: 2             # Number of courses to schedule per team/individual
+
+# The following parameters are only used in group scheduling mode
+min_available: 10               # Number of members that must be available in a session
+
+# Evolutionary algorithm parameters
+profile: progression 20 120.0   # profile iterations maxtime
+population: 400                 # Size of a generation (higher = more processing time, more global optimization)

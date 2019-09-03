@@ -244,7 +244,7 @@ class SolverIterator(object):
 
         # Draw score progress
         first = plot_ax.fill_between(steps, zero, assignment, label='Assignment score', alpha=0.3)
-        second = plot_ax.fill_between(steps, assignment, total, label='Scheduling score', alpha=0.3)
+        plot_ax.fill_between(steps, assignment, total, label='Scheduling score', alpha=0.3)
         plot_ax.plot(total, color='grey', linewidth=3)
 
         # Set labels

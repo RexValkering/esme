@@ -1,6 +1,6 @@
 # Generation parameters
-generate: groups
-num_to_generate: 12
+generate: individuals
+num_to_generate: 78
 availability_likelihood: 0.78   # Chance of a member being available per option
 
 # The following parameters are only used for generating groups
@@ -17,5 +17,5 @@ courses_per_team: 2             # Number of courses to schedule per team/individ
 min_available: 5                # Number of members that must be available in a session
 
 # Evolutionary algorithm parameters
-profile: scheduling 150
+profile: progression 20
 population: 400                 # Size of a generation (higher = more processing time, more global optimization)
