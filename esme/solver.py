@@ -80,28 +80,7 @@ class SchedulingSolver():
         total_to_assign = self.total_groups * self.courses_per_team
 
         if self.verbose:
-            # Print info about current ratio.
-            print("Total options available: {} ({} days x {} timeslots x {} boats)".format(
-                total_options_available, self.num_days, self.num_timeslots, self.num_boats
-            ))
-            if self.assignable_individuals:
-                print("")
-                print("CLUSTERING")
-                print("----------")
-                print("Number of individuals to assign to groups: {}".format(
-                    total_individuals_to_assign))
-                print("Number of groups to form: {}".format(
-                    self.total_groups - len(self.assignable_groups)))
-            print("")
-            print("SCHEDULING")
-            print("----------")
-            print("Total number of groups: {}".format(self.total_groups))
-            print("Number of slots to assign: {} ({} groups x {} courses)".format(
-                total_to_assign, self.total_groups, self.courses_per_team))
-            print("Ratio: {}/{} ({})".format(
-                total_to_assign, total_options_available,
-                float(total_to_assign) / total_options_available))
-            print("")
+            self._report_initialization()
 
         if total_to_assign > total_options_available:
             print("The number of slots to assign exceeds the number of options available.")
@@ -410,6 +389,33 @@ class SchedulingSolver():
                 slots = self.solution_schedule[day]
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
                                              for slot in range(self.num_timeslots)])
+
+    def _report_initialization(self):
+        total_options_available = self.num_boats * self.num_options
+        total_individuals_to_assign = sum([len(group) for group in self.assignable_individuals])
+        total_to_assign = self.total_groups * self.courses_per_team
+
+        # Print info about current ratio.
+        print("Total options available: {} ({} days x {} timeslots x {} boats)".format(
+            total_options_available, self.num_days, self.num_timeslots, self.num_boats
+        ))
+        if self.assignable_individuals:
+            print("")
+            print("CLUSTERING")
+            print("----------")
+            print("Number of individuals to assign to groups: {}".format(
+                total_individuals_to_assign))
+            print("Number of groups to form: {}".format(
+                self.total_groups - len(self.assignable_groups)))
+        print("")
+        print("SCHEDULING")
+        print("----------")
+        print("Total number of groups: {}".format(self.total_groups))
+        print("Number of slots to assign: {} ({} groups x {} courses)".format(
+            total_to_assign, self.total_groups, self.courses_per_team))
+        print("Ratio: {}/{} ({})".format(total_to_assign, total_options_available,
+                                         float(total_to_assign) / total_options_available))
+        print("")
 
     def _print_table(self, table):
         """Output a single table.
