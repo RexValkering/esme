@@ -88,6 +88,7 @@ class SolverPhase(object):
         return SolverStep(self.global_offset + self.step, self.method, **self.parameters)
 
     def stop_iteration(self):
+        """Returns whether to end this phase."""
         return (
             (self.iterations is not None and self.step >= self.iterations) or
             (self.maxtime is not None and time.time() - self.starting_time > self.maxtime)
@@ -129,7 +130,11 @@ class SolverProgressionPhase(SolverPhase):
         self.last_step_with_progress = self.step
 
     def stop_iteration(self):
-        return self.step - self.last_step_with_progress >= self.max_iterations_without_progress
+        """Returns whether to end this phase."""
+        return (
+            (self.step - self.last_step_with_progress >= self.max_iterations_without_progress) or
+            (self.maxtime is not None and time.time() - self.starting_time > self.maxtime)
+        )
 
 
 class SolverIterator(object):

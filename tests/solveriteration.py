@@ -1,5 +1,9 @@
+import time
 import unittest
-from schedulingsolver.iterator import SolverPhase, SolverIterator, SolverProgressionPhase, SolverMethod
+
+from schedulingsolver.iterator import SolverPhase, SolverIterator, SolverProgressionPhase, \
+    SolverMethod
+from schedulingsolver.common import SolutionScore
 
 
 class TestStringMethods(unittest.TestCase):
@@ -64,11 +68,14 @@ class TestStringMethods(unittest.TestCase):
 
         for _ in range(3):
             next(iteration)
-        iteration.register_fitness(1.0)
+        solution_score = SolutionScore(1.0, 1.0)
+        solution_score.assignment['score'] = 1.0
+
+        iteration.register_fitness(solution_score)
 
         for _ in range(3):
             next(iteration)
-        iteration.register_fitness(1.0)
+        iteration.register_fitness(solution_score)
         self.assertEqual(iteration._current_phase, 0)
 
         for _ in range(3):
@@ -81,6 +88,32 @@ class TestStringMethods(unittest.TestCase):
 
         with self.assertRaises(StopIteration):
             next(iteration)
+
+    def test_time_for_normal(self):
+        iteration = SolverIterator([
+            SolverPhase(SolverMethod.CLUSTERING, 100, maxtime=1)
+        ])
+
+        for _ in range(10):
+            next(iteration)
+            time.sleep(0.1)
+
+        with self.assertRaises(StopIteration):
+            next(iteration)
+
+
+    def test_time_for_progression(self):
+        iteration = SolverIterator([
+            SolverProgressionPhase(SolverMethod.CLUSTERING, 100, maxtime=1)
+        ])
+
+        for _ in range(10):
+            next(iteration)
+            time.sleep(0.1)
+
+        with self.assertRaises(StopIteration):
+            next(iteration)
+
 
 if __name__ == '__main__':
     unittest.main()
