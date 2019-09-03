@@ -2,7 +2,7 @@ import os
 import csv
 from collections import defaultdict
 import numpy as np
-from entities import SchedulingIndividual, SchedulingGroup
+from .entities import SchedulingIndividual, SchedulingGroup
 
 
 def parse_individuals_file(input_file, num_traits):

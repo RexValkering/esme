@@ -1,5 +1,5 @@
-from schedulingsolver.solver import SchedulingSolver
-from schedulingsolver.common import parse_args
+from esme.solver import SchedulingSolver
+from esme.common import parse_args
 
 
 def main():

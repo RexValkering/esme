@@ -3,7 +3,7 @@ import random
 
 from deap import tools
 
-from common import teams_from_solution, SolutionScore
+from .common import teams_from_solution, SolutionScore
 from .iterator import SolverMethod
 
 

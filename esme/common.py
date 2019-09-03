@@ -1,6 +1,6 @@
 import argparse
 from collections import defaultdict
-from entities import SchedulingGroup
+from .entities import SchedulingGroup
 
 
 class SolutionScore(object):

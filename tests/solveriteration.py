@@ -1,9 +1,9 @@
 import time
 import unittest
 
-from schedulingsolver.iterator import SolverPhase, SolverIterator, SolverProgressionPhase, \
+from esme.iterator import SolverPhase, SolverIterator, SolverProgressionPhase, \
     SolverMethod
-from schedulingsolver.common import SolutionScore
+from esme.common import SolutionScore
 
 
 class TestStringMethods(unittest.TestCase):

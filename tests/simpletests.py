@@ -1,5 +1,5 @@
-from schedulingsolver.common import SolverMethod
-from schedulingsolver.iterator import SolverPhase, SolverIterator
+from esme.common import SolverMethod
+from esme.iterator import SolverPhase, SolverIterator
 
 iteration = SolverIterator([
     SolverPhase(SolverMethod.CLUSTERING, 2),
