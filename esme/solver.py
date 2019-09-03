@@ -135,11 +135,11 @@ class SchedulingSolver():
         # Default parameter values
         parameters = {
             'generate': 'groups',
-            'num_to_generate': 24,
+            'num_to_generate': 6,
             'num_traits': 0,
             'trait_weights': [],
-            'min_members_per_group': 5,
-            'max_members_per_group': 8,
+            'min_members_per_group': 6,
+            'max_members_per_group': 7,
             'availability_likelihood': 0.78,
             'num_boats': 1,
             'num_timeslots': 3,
@@ -147,10 +147,7 @@ class SchedulingSolver():
             'courses_per_team': 1,
             'seats_per_boat': 4,
             'min_available': 5,
-            'generations': 400,
             'population': 400,
-            'indpb': 0.05,
-            'solution_mode': 3,
             'profile': 'default 400'
         }
 
