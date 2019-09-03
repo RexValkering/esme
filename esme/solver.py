@@ -34,6 +34,7 @@ class SchedulingSolver():
     generations = None
     population = None
     indpb = None
+    timeslots = None
 
     solution = None
     solution_generated_groups = None
@@ -50,6 +51,7 @@ class SchedulingSolver():
 
         self.load_scheduling_parameters(args)
         self.solution_iterator = parse_profile(self.profile)
+        self.parse_timeslots()
 
         # Files
         self.input_files = args.input
@@ -58,8 +60,6 @@ class SchedulingSolver():
 
         self.assignable_groups = list()
         self.assignable_individuals = list()
-
-        self.num_options = self.num_timeslots * self.num_days
         self.verbose = True
 
         # Either load groups from file or generate them from parameters
@@ -75,8 +75,7 @@ class SchedulingSolver():
             number_of_groups = self.get_number_of_groups_by_number_of_individuals(len(group))
             self.total_groups += number_of_groups
 
-        total_options_available = self.num_boats * self.num_options
-        total_individuals_to_assign = sum([len(group) for group in self.assignable_individuals])
+        total_options_available = self.num_boats * sum(self.timeslots)
         total_to_assign = self.total_groups * self.courses_per_team
 
         if self.verbose:
@@ -113,6 +112,11 @@ class SchedulingSolver():
             if groups_from_file:
                 print("Loaded {} groups".format(len(groups_from_file)))
 
+    def parse_timeslots(self):
+        if self.timeslots:
+            return
+        self.timeslots = [self.num_timeslots] * self.num_days
+
     def load_scheduling_parameters(self, args):
         """Load scheduling parameters from command line, config file and defaults.
 
@@ -136,7 +140,8 @@ class SchedulingSolver():
             'seats_per_boat': 4,
             'min_available': 5,
             'population': 400,
-            'profile': 'default 400'
+            'profile': 'default 400',
+            'timeslots': None
         }
 
         # Parse config file. These override default values.
@@ -168,7 +173,7 @@ class SchedulingSolver():
             SchedulingIndividual
         """
         individual = SchedulingIndividual('Individual {}'.format(offset))
-        individual.randomize_preferences(self.num_options, self.availability_likelihood)
+        individual.randomize_preferences(sum(self.timeslots), self.availability_likelihood)
         return individual
 
     def generate_group(self, group_size, group_offset, individual_offset):
@@ -183,7 +188,7 @@ class SchedulingSolver():
         individuals = [self.generate_individual(i) for i in range(individual_offset,
                                                                   individual_offset + group_size)]
         group = SchedulingGroup('Group {}'.format(group_offset), individuals,
-                                num_options=self.num_options)
+                                num_options=sum(self.timeslots))
         return group
 
     def save_generated_to_file(self, filename):
@@ -234,16 +239,15 @@ class SchedulingSolver():
             solution: the solution to create the schedule for
         """
         days = {}
-        for day in range(self.num_days):
+        for day, timeslots in enumerate(self.timeslots):
             days[day] = {}
-            for slot in range(self.num_timeslots):
+            for slot in range(timeslots):
                 days[day][slot] = []
 
         for i in range(self.courses_per_team * self.total_groups):
             assigned_option = solution[-1][i]
             assigned_entity = all_groups[i // self.courses_per_team]
-            assigned_day = assigned_option // self.num_timeslots
-            assigned_timeslot = assigned_option % self.num_timeslots
+            assigned_day, assigned_timeslot = self.timeslot_offset_to_pair(assigned_option)
 
             days[assigned_day][assigned_timeslot].append(assigned_entity)
 
@@ -261,8 +265,23 @@ class SchedulingSolver():
 
     def list_of_timeslots(self):
         """Returns a list of strings for each day and timeslot."""
-        return ['Day {} Slot {}'.format(day, slot) for day, slot in
-                itertools.product(range(self.num_days), range(self.num_timeslots))]
+        return ['Day {} Slot {}'.format(day, slot)
+                for day, timeslots in enumerate(self.timeslots)
+                for slot in range(timeslots)]
+
+    def timeslot_offset_to_pair(self, offset):
+        """Returns the day and slot given a timeslot offset.
+
+        For example, offset 7 may resolve to (0-indexed) day 1, timeslot 3 if all days have 4 slots.
+
+        Args:
+            offset: solution offset of timeslot
+        """
+        for day, timeslots in enumerate(self.timeslots):
+            offset -= timeslots
+            if offset < 0:
+                break
+        return day, offset + timeslots
 
     def maximum_score(self, split=False):
         """Get the maximum possible score.
@@ -393,20 +412,20 @@ class SchedulingSolver():
         schedule_file = "{}_schedule.csv".format(self.output_prefix)
         with open(schedule_file, 'w') as outfile:
             writer = csv.writer(outfile)
-            writer.writerow(['Day'] + list(range(1, self.num_timeslots + 1)))
-            for day in range(self.num_days):
+            writer.writerow(['Day'] + list(range(1, max(self.timeslots) + 1)))
+            for day, timeslots in enumerate(self.timeslots):
                 slots = self.solution_schedule[day]
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
-                                             for slot in range(self.num_timeslots)])
+                                             for slot in range(timeslots)])
 
     def _report_initialization(self):
-        total_options_available = self.num_boats * self.num_options
+        total_options_available = self.num_boats * sum(self.timeslots)
         total_individuals_to_assign = sum([len(group) for group in self.assignable_individuals])
         total_to_assign = self.total_groups * self.courses_per_team
 
         # Print info about current ratio.
-        print("Total options available: {} ({} days x {} timeslots x {} boats)".format(
-            total_options_available, self.num_days, self.num_timeslots, self.num_boats
+        print("Total options available: {} ({} timeslots x {} boats)".format(
+            total_options_available, sum(self.timeslots), self.num_boats
         ))
         if self.assignable_individuals:
             print("")
@@ -473,20 +492,22 @@ class SchedulingSolver():
         """Print info about the scheduling solution."""
         print("Number of teams: {}".format(self.total_groups))
         print("Available boats per option: {}".format(self.num_boats))
-        print("Available options: {}".format(self.num_options))
+        print("Available options: {}".format(sum(self.timeslots)))
         score = evaluate_permutation(self.solution, self)[0]
         assignment_max, scheduling_max = self.maximum_score(True)
         score.report([assignment_max, scheduling_max])
         print("")
 
-        for day in range(self.num_days):
+        slot_offset = 0
+        for day, timeslots in enumerate(self.timeslots):
             print("Day {}:".format(day + 1))
-            for slot in range(self.num_timeslots):
+            for slot in range(timeslots):
                 print("\tTimeslot {}: {}".format(slot + 1, ", ".join(
                     [str(x) for x in self.solution_schedule[day][slot]])))
                 for x in self.solution_schedule[day][slot]:
                     print("\t\t{} ({}/{})".format(
-                        x, x.availability(day * self.num_timeslots + slot), x.num_members))
+                        x, x.availability(slot_offset), x.num_members))
+                slot_offset += 1
             print("")
 
     def report(self):

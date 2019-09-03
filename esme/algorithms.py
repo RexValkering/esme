@@ -64,7 +64,8 @@ def evaluate_schedule(solution, score, solver, assignable):
 
     # Give penalties for one group being twice assigned to the same day.
     for g in range(len(assignable)):
-        assignments = [solution[-1][g * solver.courses_per_team + i] // solver.num_timeslots for i in range(solver.courses_per_team)]
+        assignments = [solver.timeslot_offset_to_pair(solution[-1][g * solver.courses_per_team + i])[0]
+                       for i in range(solver.courses_per_team)]
 
         count = Counter(assignments)
         if count.most_common(1)[0][1] > 1:
@@ -111,7 +112,7 @@ def generate_permutation(solver):
 
     # Create a final list of group schedules.
     options = []
-    for k in range(solver.num_options):
+    for k in range(sum(solver.timeslots)):
         options.extend([k] * solver.num_boats)
     random.shuffle(options)
     permutation.append(options)
