@@ -179,8 +179,6 @@ class SolverIterator(object):
 
     def widgets(self):
         """Return a list of widgets"""
-        phase_types = {phase.progression_type() for phase in self.phases}
-
         if not self._widgets:
             phases_digits = len(str(len(self.phases)))
             phase_widget = progressbar.DynamicMessage('phase', width=1 + 2 * phases_digits)
