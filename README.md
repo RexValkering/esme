@@ -1,5 +1,5 @@
 [![Sonarcloud Status](https://sonarcloud.io/api/project_badges/measure?project=RexValkering_team-scheduling&metric=alert_status)](https://sonarcloud.io/dashboard?id=RexValkering_team-scheduling)
-[![BCH compliance](https://bettercodehub.com/edge/badge/RexValkering/team-scheduling?branch=master)](https://bettercodehub.com/)
+[![BCH compliance](https://bettercodehub.com/edge/badge/RexValkering/esme?branch=master)](https://bettercodehub.com/)
 
 # Introduction
 
