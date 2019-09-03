@@ -411,11 +411,21 @@ class SchedulingSolver():
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
                                              for slot in range(self.num_timeslots)])
 
-    def report_assignment(self):
-        """Print info about the clustering solution."""
-        print("Generated groups:")
+    def _print_table(self, table):
+        """Output a single table.
+
+        Args:
+            table: dict with keys 'data' and 'headers'
+        """
+        data = table['data']
+        rows = [
+            [data[k][j] if len(data[k]) > j else '' for k in range(len(data))]
+            for j in range(max([len(data[k]) for k in range(len(data))]))
+        ]
+        print(tabulate(rows, headers=table['headers']))
         print("")
 
+    def _groups_to_tables(self):
         tables = []
         groups_per_row = 3
 
@@ -431,18 +441,20 @@ class SchedulingSolver():
             else:
                 tables[-1]['data'].append(["{}".format(member.name)
                                            for member in group.members])
+        return tables
 
-        for table in tables:
-            data = table['data']
-            rows = [
-                [data[k][j] if len(data[k]) > j else '' for k in range(len(data))]
-                for j in range(max([len(data[k]) for k in range(len(data))]))
-            ]
-            print(tabulate(rows, headers=table['headers']))
-            print("")
+    def _report_assignment(self):
+        """Print info about the clustering solution."""
+        print("Generated groups:")
         print("")
 
-    def report_scheduling(self):
+        tables = self._groups_to_tables()
+        for table in tables:
+            self._print_table(table)
+
+        print("")
+
+    def _report_scheduling(self):
         """Print info about the scheduling solution."""
         print("Number of teams: {}".format(self.total_groups))
         print("Available boats per option: {}".format(self.num_boats))
@@ -466,6 +478,6 @@ class SchedulingSolver():
 
         # Select best and report on results
         if self.assignable_individuals:
-            self.report_assignment()
+            self._report_assignment()
 
-        self.report_scheduling()
+        self._report_scheduling()
