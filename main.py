@@ -6,12 +6,7 @@ def main():
     
     args = parse_args()
     solver = SchedulingSolver(args)
-    solver.solve()
-    if solver.output_prefix:
-        solver.save_results_to_file()
-    solver.report()
-    solver.plot_progress()
-
+    solver.run(report=True, plot=True)
 
 if __name__ == '__main__':
     main()

@@ -87,6 +87,15 @@ class SchedulingSolver():
             print("Please calibrate your parameters and try again.")
             exit()
 
+    def run(self, report=True, plot=True):
+        self.solve()
+        if self.output_prefix:
+            self.save_results_to_file()
+        if report:
+            self.report()
+        if plot:
+            self.plot_progress()
+
     def parse_input_file(self, input_file):
         """Parse an input file. Should know the difference between input and solution files.
 
