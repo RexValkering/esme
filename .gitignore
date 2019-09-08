@@ -1,5 +1,9 @@
 temp/
 .envrc
+*_groups.csv
+*_progress.csv
+*_schedule.csv
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
@@ -12,6 +16,7 @@ __pycache__/
 # Distribution / packaging
 .Python
 env/
+pypyenv/
 build/
 develop-eggs/
 dist/
