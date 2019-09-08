@@ -1,8 +1,7 @@
-"""Contains classes to chain different solver methods."""
 import time
 from enum import Enum
+import csv
 
-from matplotlib import pyplot as plt
 import progressbar
 
 
@@ -229,45 +228,19 @@ class SolverIterator(object):
         """Returns a string representation of current phase progress"""
         return "{}/{}".format(self._current_phase, len(self.phases))
 
-    def plot(self, maximum_scores, ax=None, savefile=None):
-        """Create a plot of the score progression."""
-        plt.style.use('ggplot')
-        if not ax:
-            figure = plt.figure()
-            plot_ax = figure.add_subplot(1, 1, 1)
-        else:
-            plot_ax = ax
+    def save_progress(self, savefile):
+        """Save progress to CSV file.
 
-        # Extract relevant values
+        Args:
+            savefile: csv to write to
+        """
         assignment, scheduling = zip(*[(score.assignment_score(), score.scheduling_score())
                                        for score in self.score_history])
-        total = [assignment[i] + scheduling[i] for i in range(len(assignment))]
-        steps = list(range(len(self.score_history)))
-        zero = [0.0] * len(steps)
-
-        # Draw score progress
-        first = plot_ax.fill_between(steps, zero, assignment, label='Assignment score', alpha=0.3)
-        plot_ax.fill_between(steps, assignment, total, label='Scheduling score', alpha=0.3)
-        plot_ax.plot(total, color='grey', linewidth=3)
-
-        # Set labels
-        plot_ax.set_xlabel('generation')
-        plot_ax.set_ylabel('raw score')
-        plot_ax.set_title('Progression of score over time')
-
-        # Draw maximum scores
-        plot_ax.axhline(y=maximum_scores[0], color=first.get_facecolor()[0], linestyle='dashed', alpha=0.5)
-        plot_ax.axhline(y=max(assignment) + maximum_scores[1], color='grey', linestyle='dashed', alpha=0.5)
-
-        # Draw phase transitions
-        for _, step in enumerate(self.phase_history):
-            plot_ax.axvline(x=step, color='grey', linestyle='dashed', alpha=0.5)
-
-        if savefile is not None:
-            figure.savefig(savefile)
-        elif ax is None:
-            plt.legend()
-            plt.show()
+        with open(savefile, 'w') as outfile:
+            writer = csv.writer(outfile)
+            writer.writerow(['i', 'assignment', 'scheduling', 'total'])
+            for i in range(len(assignment)):
+                writer.writerow([i, assignment[i], scheduling[i], assignment[i] + scheduling[i]])
 
     def _set_offset(self):
         """set the offset for all underlying phases."""

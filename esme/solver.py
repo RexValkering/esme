@@ -87,14 +87,13 @@ class SchedulingSolver():
             print("Please calibrate your parameters and try again.")
             exit()
 
-    def run(self, report=True, plot=True):
+    def run(self, report=True):
         self.solve()
         if self.output_prefix:
             self.save_results_to_file()
+            self.save_progress()
         if report:
             self.report()
-        if plot:
-            self.plot_progress()
 
     def parse_input_file(self, input_file):
         """Parse an input file. Should know the difference between input and solution files.
@@ -393,8 +392,8 @@ class SchedulingSolver():
 
         return result
 
-    def plot_progress(self):
-        self.solution_iterator.plot(self.maximum_score(split=True))
+    def save_progress(self):
+        self.solution_iterator.save_progress('{}_progress.csv'.format(self.output_prefix))
 
     def save_results_to_file(self):
         """Save the solution schedule to file.

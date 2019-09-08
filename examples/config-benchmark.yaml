@@ -1,0 +1,21 @@
+# Generation parameters
+generate: groups
+num_to_generate: 10
+availability_likelihood: 0.78   # Chance of a member being available per option
+
+# The following parameters are only used for generating groups
+min_members_per_group: 6        # Number of members per groups
+max_members_per_group: 7        # Number of members per groups
+
+# Available slots information
+num_boats: 4                    # Number of boats per timeslot  
+num_timeslots: 4                # Number of timeslots per day
+num_days: 4                     # Number of days available
+courses_per_team: 5             # Number of courses to schedule per team/individual
+
+# The following parameters are only used in group scheduling mode
+min_available: 5                # Number of members that must be available in a session
+
+# Evolutionary algorithm parameters
+profile: scheduling 500
+population: 400                 # Size of a generation (higher = more processing time, more global optimization)
