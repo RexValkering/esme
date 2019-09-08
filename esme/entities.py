@@ -72,6 +72,7 @@ class SchedulingGroup(object):
         self.id = next(self._ids)
         self.name = name
         self.members = members
+        self.averages = {}
         for member in members:
             member.group = self
 
@@ -88,7 +89,10 @@ class SchedulingGroup(object):
 
     def trait_average(self, trait):
         """Calculate the average value of a trait in a group."""
-        return np.mean([member.normalized_traits[trait] for member in self.members])
+        if trait not in self.averages:
+            self.averages[trait] = np.mean([member.normalized_traits[trait]
+                                            for member in self.members])
+        return self.averages[trait]
 
     def trait_cumulative_penalty(self, trait, margin=0.0, normalize=False):
         """Calculate the cumulative penalty of a trait in a group.

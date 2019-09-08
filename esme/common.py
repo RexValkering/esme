@@ -5,7 +5,7 @@ from .entities import SchedulingGroup
 
 class SolutionScore(object):
 
-    def __init__(self, assignment_weight=0.0, scheduling_weight=0.0):
+    def __init__(self, assignment_weight=1.0, scheduling_weight=1.0):
 
         self.assignment = {
             'score': 0.0,

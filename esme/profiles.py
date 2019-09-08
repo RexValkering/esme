@@ -1,12 +1,32 @@
 from .iterator import SolverIterator, SolverPhase, SolverMethod, SolverProgressionPhase
 
 
+class AssignmentIterationProfile(SolverIterator):
+
+    def __init__(self, iterations=400, maxtime=None, clustering_weight=1.0, scheduling_weight=1.0):
+
+        weights = [clustering_weight, 0.0]
+
+        phase_iterations = [iterations // 2] * 2
+        phase_times = [None] * 2
+        if maxtime:
+            phase_times = [maxtime * iterations // 2] * 2
+
+        phases = [
+            SolverPhase(SolverMethod.CLUSTERING, phase_iterations[0], maxtime=phase_times[0],
+                        inpdb=0.05, weights=weights),
+            SolverPhase(SolverMethod.CLUSTERING, phase_iterations[1], maxtime=phase_times[1],
+                        inpdb=0.01, weights=weights)
+        ]
+
+        super().__init__(phases)
+
 
 class SchedulingIterationProfile(SolverIterator):
 
     def __init__(self, iterations=400, maxtime=None, clustering_weight=1.0, scheduling_weight=1.0):
 
-        weights = [clustering_weight, scheduling_weight]
+        weights = [0.0, scheduling_weight]
 
         phase_iterations = [iterations // 2] * 2
         phase_times = [None] * 2
@@ -76,7 +96,8 @@ class ProgressionIterationProfile(SolverIterator):
 PROFILES = {
     'default': DefaultIterationProfile,
     'progression': ProgressionIterationProfile,
-    'scheduling': SchedulingIterationProfile
+    'scheduling': SchedulingIterationProfile,
+    'assignment': AssignmentIterationProfile,
 }
 
 

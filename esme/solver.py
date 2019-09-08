@@ -9,7 +9,8 @@ import numpy as np
 from deap import creator, base, tools, algorithms
 
 from .common import sorted_teams_from_solution
-from .algorithms import evaluate_permutation, mutate_permutation, generate_permutation
+from .algorithms import evaluate_permutation, mutate_permutation, generate_permutation, \
+    finalize_solution
 from .entities import SchedulingGroup, SchedulingIndividual
 from .parsers import InputFileParser
 from .profiles import parse_profile
@@ -260,8 +261,7 @@ class SchedulingSolver():
             num_individuals: the number of people to generate groups for
         """
         average_group_size = (self.min_members_per_group + self.max_members_per_group) / 2.0
-
-        return int(num_individuals / average_group_size)
+        return int(num_individuals / average_group_size + 0.5)
 
     def list_of_timeslots(self):
         """Returns a list of strings for each day and timeslot."""
@@ -377,7 +377,13 @@ class SchedulingSolver():
 
         self.solution_iterator.update_progressbar(100 * maximum_fit / maximum_score, final=True)
 
-        self.solution = result
+        self.solution = finalize_solution(result, self)
+        new_score = evaluate_permutation(self.solution, self)
+        if new_score[0].score() > maximum_fit:
+            print("Improved final solution: {} > {}".format(new_score[0].score(), maximum_fit))
+        else:
+            print("Could not improve final solution")
+
 
         self.solution_generated_groups = sorted_teams_from_solution(self.solution,
                                                                     self.assignable_individuals)

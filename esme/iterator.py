@@ -50,6 +50,9 @@ class SolverPhase(object):
         # if iterations is None and maxtime is None:
             # raise ValueError("Either iterations or maxtime needs to be defined.")
 
+        if iterations is not None and iterations < 1:
+            raise ValueError('Invalid number of iterations: {}'.format(iterations))
+
         self.method = method
         self.iterations = iterations
         self.maxtime = maxtime

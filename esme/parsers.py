@@ -13,12 +13,13 @@ class InputFileParser(object):
         num_traits: the number of traits in the file
     """
 
-    def __init__(self, input_file, num_traits):
+    def __init__(self, input_file, num_traits, num_timeslots=None):
         self.input_file = input_file
         self.num_traits = num_traits
         self.groups = defaultdict(list)
+        self.detected_slots = num_timeslots
 
-    def _validate(self):
+    def _validate_file(self):
         """Make sure file is valid."""
         if not os.path.isfile(self.input_file):
             raise ValueError("File does not exist: {}".format(self.input_file))
@@ -26,9 +27,26 @@ class InputFileParser(object):
         if not self.input_file.endswith('.csv'):
             raise ValueError("File is not a .csv: {}".format(self.input_file))
 
+    def _validate_row(self, row):
+        if not self.detected_slots:
+            self.detected_slots = len(row) - 2 - self.num_traits
+
+        valid_row_length = 2 + self.num_traits + self.detected_slots
+        if len(row) != valid_row_length:
+            raise ValueError("Row does not have valid number of columns: {}".format(str(row)))
+
+        if any([int(availability) not in [0, 1] for availability in self._extract_availability(row)]):
+            raise ValueError("Incorrect value in availability: {}".format(self._extract_availability(row)))
+
+    def _extract_traits(self, row):
+        return row[2:2 + self.num_traits]
+
+    def _extract_availability(self, row):
+        return row[2 + self.num_traits:]
+
     def _parse_file(self):
         """Reads individuals from the submitted input file."""
-        with open(self.input_file) as infile:
+        with open(self.input_file, encoding="latin-1") as infile:
             reader = csv.reader(infile)
 
             # Skip header
@@ -36,10 +54,11 @@ class InputFileParser(object):
 
             # Read all individuals from file
             for row in reader:
+                self._validate_row(row)
                 name = row[0]
                 group = row[1]
-                availability = [int(x) for x in row[2 + self.num_traits:]]
-                traits = [float(x) for x in row[2:2+self.num_traits]]
+                availability = [int(x) for x in self._extract_availability(row)]
+                traits = [float(x) for x in self._extract_traits(row)]
 
                 self.groups[group].append(SchedulingIndividual(name, availability, traits=traits))
 
@@ -82,7 +101,7 @@ class InputFileParser(object):
             individuals: list of unassigned individuals
             groups: list of groups with assigned individuals
         """
-        self._validate()
+        self._validate_file()
         self._parse_file()
         self._normalize_traits()
         return self._generate_lists()
