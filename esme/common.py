@@ -94,7 +94,7 @@ def sorted_teams_from_solution(solution, assignable_individuals):
     )
 
 
-def parse_args():
+def parse_args(data=None):
     """Define the command line arguments to be passed."""
     parser = argparse.ArgumentParser()
 
@@ -128,5 +128,8 @@ def parse_args():
     group.add_argument('-l', '--availability_likelihood', help='likelihood of a member being available for an option', type=float)
     group.add_argument('-x', '--generations', help='number of generations to test', type=int)
     group.add_argument('-y', '--population', help='population size per generation', type=int)
-    args = parser.parse_args()
+    if data:
+        args = parser.parse_args(data)
+    else:
+        args = parser.parse_args()
     return args
