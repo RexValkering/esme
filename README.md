@@ -6,7 +6,7 @@
 Do you have a training schedule to create? Want to do it with evolutionary computing? Then you're at the right place!
 
 This script was made in an attempt to solve the rower scheduling problem.
-Given a list of rowers and the number of available boats and timeslots, can we create a schedule that maximizes the rowers available per course?
+Given a list of rowers with their traits and the number of available boats and timeslots, can we create a schedule that minimizes the difference in traits per team and maximizes the rowers available per course?
 
 # Requirements
 
