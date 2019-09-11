@@ -13,4 +13,5 @@ setup(name='esme',
       author_email='rexvalkering@gmail.com',
       license='MIT',
       packages=['esme'],
+      install_requires=['deap', 'numpy', 'progressbar2', 'pyyaml', 'tabulate'],
       zip_safe=False)
