@@ -37,7 +37,7 @@ class SolutionScore(object):
         ):
             if not maximum:
                 continue
-                
+
             print('')
             print('{} score:'.format(key))
             print('  - Score: {:.3f}'.format(score))
@@ -54,7 +54,7 @@ class SolutionScore(object):
                 else self.score() > other)
 
 
-def teams_from_solution(solution, assignable_individuals):
+def teams_from_solution(solution, assignable_individuals, group_prefix='Generated group'):
     """Generate teams from the individuals that were scheduled.
 
     Args:
@@ -74,11 +74,11 @@ def teams_from_solution(solution, assignable_individuals):
                 break
             generated_teams[group].append(category[individual])
 
-    return [SchedulingGroup('Generated group {}'.format(g+1), members)
+    return [SchedulingGroup('{} {}'.format(group_prefix, g+1), members)
             for g, members in generated_teams.items()]
 
 
-def sorted_teams_from_solution(solution, assignable_individuals):
+def sorted_teams_from_solution(solution, assignable_individuals, group_prefix='Generated group'):
     """Generate teams and sort them by id.
 
     Args:
@@ -89,7 +89,7 @@ def sorted_teams_from_solution(solution, assignable_individuals):
         list of SchedulingGroup instances
     """
     return sorted(
-        teams_from_solution(solution, assignable_individuals),
+        teams_from_solution(solution, assignable_individuals, group_prefix),
         key=lambda x: x.id
     )
 
@@ -108,12 +108,12 @@ def parse_args(data=None):
     group.add_argument('-p', '--profile', help='Solution profile to use', choices=['default', 'progression'])
     group.add_argument('--score', help='Score the provided solution files instead.', action='store_true')
     group.add_argument('--generate',
-                        help='Set to `individuals` to generate individuals without groups ' + 
+                        help='Set to `individuals` to generate individuals without groups ' +
                              'or to `groups` to generate individuals with groups. Ignored if one ' +
                              'or more input files are supplied.',
                         choices=['individuals', 'groups'])
     group.add_argument('-g', '--num_to_generate', help='number of individuals/groups to generate', type=int)
-    
+
     group.add_argument('--num_traits', help='number of traits in input csv files')
     group.add_argument('-w', '--trait_weights', nargs='*', help='trait weights')
 

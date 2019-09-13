@@ -105,3 +105,67 @@ class InputFileParser(object):
         self._parse_file()
         self._normalize_traits()
         return self._generate_lists()
+
+
+class GroupScheduleParser(object):
+    """Converts a single input file into a schedule
+
+    Args:
+        input_file: CSV file with the schedule
+        groups: all groups that should be present in the schedule
+    """
+
+    schedule = None
+    lookup = None
+
+    def __init__(self, input_file, groups):
+        self.input_file = input_file
+        self.groups = groups
+        self.lookup = {group.name: group for group in self.groups}
+
+    def _validate_file(self):
+        pass
+
+    def _parse_file(self):
+        with open(self.input_file) as infile:
+            reader = csv.reader(infile)
+            next(reader)
+            self.schedule = [
+                [self._lookup_list(column.split(', ')) if column else [] for column in row[1:]]
+                for row in reader
+            ]
+
+    def _lookup_list(self, groups):
+        return [self.lookup[group] for group in groups]
+
+    def _enrich_groups(self):
+        index = 0
+        for day, timeslots in enumerate(self.schedule):
+            for timeslot, groups in enumerate(timeslots):
+                for group in groups:
+                    group.add_scheduled_timeslot((day, timeslot))
+                    for individual in group.members:
+                        individual.scheduled_timeslots_availability.append(
+                            individual.preferences[index])
+                index += 1
+
+    def _validate_groups(self):
+        frequency = [len(group.scheduled_timeslots) for group in self.groups]
+        if min(frequency) < max(frequency):
+            raise ValueError('The number of scheduled timeslots is not equal for all groups.')
+
+    def _generate_lists(self):
+        return self.schedule
+
+    def parse(self):
+        """Parses input file and returns results.
+
+        Returns:
+            individuals: list of unassigned individuals
+            groups: list of groups with assigned individuals
+        """
+        self._validate_file()
+        self._parse_file()
+        self._enrich_groups()
+        self._validate_groups()
+        return self._generate_lists()

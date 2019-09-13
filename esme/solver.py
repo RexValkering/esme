@@ -36,6 +36,7 @@ class SchedulingSolver():
     population = None
     indpb = None
     timeslots = None
+    generated_group_prefix = None
 
     solution = None
     solution_generated_groups = None
@@ -86,6 +87,10 @@ class SchedulingSolver():
             print("The number of slots to assign exceeds the number of options available.")
             print("Please calibrate your parameters and try again.")
             exit()
+
+    def set_progress_callback(self, handler):
+        """Set up a handler for reporting intermediate progress."""
+        self.solution_iterator.set_progress_callback(handler)
 
     def run(self, report=True):
         self.solve()
@@ -141,7 +146,8 @@ class SchedulingSolver():
             'min_available': 5,
             'population': 400,
             'profile': 'default 400',
-            'timeslots': None
+            'timeslots': None,
+            'generated_group_prefix': 'Generated group'
         }
 
         # Parse config file. These override default values.
@@ -363,7 +369,7 @@ class SchedulingSolver():
                 if int(score) == maximum_score:
                     result = ind
                     break
-                ind.fitness.values = score, 
+                ind.fitness.values = score,
 
             population = toolbox.select(offspring, k=len(population))
             if maximum_score_object:
@@ -385,7 +391,8 @@ class SchedulingSolver():
 
 
         self.solution_generated_groups = sorted_teams_from_solution(self.solution,
-                                                                    self.assignable_individuals)
+                                                                    self.assignable_individuals,
+                                                                    self.generated_group_prefix)
         self.solution_groups = self.assignable_groups + self.solution_generated_groups
         self.solution_schedule = self.generate_schedule_from_solution(self.solution,
                                                                       self.solution_groups)
@@ -403,7 +410,7 @@ class SchedulingSolver():
             schedule: day -> timeslot -> [groups] dictionary
         """
         groups_file = "{}_groups.csv".format(self.output_prefix)
-        with open(groups_file, 'w') as outfile:
+        with open(groups_file, 'w', encoding='utf-8') as outfile:
             writer = csv.writer(outfile)
             writer.writerow(['Name', 'Group'] +
                             ['Trait {}'.format(i+1) for i in range(self.num_traits)] +
@@ -422,6 +429,22 @@ class SchedulingSolver():
                 slots = self.solution_schedule[day]
                 writer.writerow([day + 1] + [', '.join([str(x) for x in slots[slot]])
                                              for slot in range(timeslots)])
+
+        config_file = "{}_config.yaml".format(self.output_prefix)
+        with open(config_file, 'w') as outfile:
+            config = {
+                'num_traits': self.num_traits,
+                'trait_weights': self.trait_weights,
+                'min_members_per_group': self.min_members_per_group,
+                'max_members_per_group': self.max_members_per_group,
+                'num_boats': self.num_boats,
+                'courses_per_team': self.courses_per_team,
+                'min_available': self.min_available,
+                'population': self.population,
+                'profile': self.profile,
+                'timeslots': self.timeslots
+            }
+            yaml.dump(config, outfile)
 
     def _report_initialization(self):
         total_options_available = self.num_boats * sum(self.timeslots)

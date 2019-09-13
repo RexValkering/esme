@@ -13,6 +13,18 @@ class SolverMethod(Enum):
     ALTERNATING = 4
 
 
+class SolverProgress(object):
+
+    def __init__(self, iterator):
+        self.progress = (iterator.percentual_progress(), 100.0)
+        self.phase = (iterator.current_phase, len(iterator.phases))
+        score = iterator.score_history[-1] if iterator.score_history else None
+        self.score = (score.assignment, score.scheduling) if score else (0.0, 0.0)
+
+    def to_dict(self):
+        return self.__dict__
+
+
 class SolverStep(object):
     """Solver parameters for a single step.
 
@@ -148,9 +160,10 @@ class SolverIterator(object):
 
     _progressbar = None
     _widgets = None
-    _current_phase = 0
+    current_phase = 0
     phases = None
     score_history = None
+    progress_callback = None
 
     def __init__(self, phases):
 
@@ -182,7 +195,7 @@ class SolverIterator(object):
             fitness: solution score
         """
         self.score_history.append(fitness)
-        self.phases[self._current_phase].register_fitness(fitness.score())
+        self.phases[self.current_phase].register_fitness(fitness.score())
 
     def widgets(self):
         """Return a list of widgets"""
@@ -210,23 +223,23 @@ class SolverIterator(object):
         Args:
             score: current solution score
         """
-        self._progressbar.update(self.bar_progress(),
+        self._progressbar.update(self.percentual_progress(),
                                  score=score,
                                  phase=self.phase_progress())
 
-    def bar_progress(self):
-        if self._current_phase >= len(self.phases):
+    def percentual_progress(self):
+        if self.current_phase >= len(self.phases):
             return 100.0
 
-        phase_score = float(self._current_phase)
-        phase = self.phases[self._current_phase]
+        phase_score = float(self.current_phase)
+        phase = self.phases[self.current_phase]
         if phase.progression_type() == 'generations':
             phase_score += float(phase.step) / phase.iterations
         return 100.0 / len(self.phases) * phase_score
 
     def phase_progress(self):
         """Returns a string representation of current phase progress"""
-        return "{}/{}".format(self._current_phase, len(self.phases))
+        return "{}/{}".format(self.current_phase, len(self.phases))
 
     def save_progress(self, savefile):
         """Save progress to CSV file.
@@ -242,6 +255,10 @@ class SolverIterator(object):
             for i in range(len(assignment)):
                 writer.writerow([i, assignment[i], scheduling[i], assignment[i] + scheduling[i]])
 
+    def set_progress_callback(self, handler):
+        """Set up a handler for reporting intermediate progress."""
+        self.progress_callback = handler
+
     def _set_offset(self):
         """set the offset for all underlying phases."""
         global_offset = 0
@@ -250,15 +267,18 @@ class SolverIterator(object):
             global_offset += (phase.iterations if phase.iterations else 0)
 
     def __iter__(self):
-        self._current_phase = 0
+        self.current_phase = 0
         return self
 
     def __next__(self):
         # If the last phase has finished, raise a StopIteration
-        if self._current_phase >= len(self.phases):
+        if self.progress_callback:
+            self.progress_callback(SolverProgress(self).to_dict())
+
+        if self.current_phase >= len(self.phases):
             raise StopIteration
 
-        phase = self.phases[self._current_phase]
+        phase = self.phases[self.current_phase]
         try:
             # Store and return the next phase step
             self.current_step = next(phase)
@@ -266,6 +286,6 @@ class SolverIterator(object):
         except StopIteration:
             # Move on to the next phase
             self.phase_history.append(self.current_step.i)
-            self._current_phase += 1
+            self.current_phase += 1
             return next(self)
 

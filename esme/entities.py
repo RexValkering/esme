@@ -22,6 +22,7 @@ class SchedulingIndividual(object):
         self.preferences = preferences
         self.traits = traits if traits is not None else []
         self.normalized_traits = []
+        self.scheduled_timeslots_availability = []
 
     def normalize_traits(self, averages, stdevs):
         """Store a version of each trait normalized to its distribution.
@@ -44,7 +45,7 @@ class SchedulingIndividual(object):
 
     def availability(self, option=None):
         """Return availability at a certain option, or all options if no option is supplied.
-        
+
         Args:
             option: option to get availability for. If none is given, it returns all availability
         """
@@ -70,6 +71,8 @@ class SchedulingGroup(object):
 
     def __init__(self, name, members, num_options=None):
         self.id = next(self._ids)
+        parts = name.split(' ')
+        self.group_id = int(parts[-1]) if parts[-1].isnumeric() else self.id
         self.name = name
         self.members = members
         self.averages = {}
@@ -86,6 +89,7 @@ class SchedulingGroup(object):
             exit()
 
         self.num_members = len(self.members)
+        self.scheduled_timeslots = []
 
     def trait_average(self, trait):
         """Calculate the average value of a trait in a group."""
@@ -125,6 +129,12 @@ class SchedulingGroup(object):
             return sum([member.preferences[option] for member in self.members])
         return [sum([member.preferences[option] for member in self.members])
                 for option in range(self.num_options)]
+
+    def add_scheduled_timeslot(self, timeslot):
+        self.scheduled_timeslots.append(timeslot)
+
+    def __lt__(self, other):
+        return self.group_id < other.group_id
 
     def __repr__(self):
         return self.name
