@@ -105,7 +105,7 @@ def parse_args(data=None):
     group.add_argument('-c', '--config', help='config .yaml file')
 
     group = parser.add_argument_group('general')
-    group.add_argument('-p', '--profile', help='Solution profile to use', choices=['default', 'progression'])
+    group.add_argument('-p', '--profile', help='Solution profile to use')
     group.add_argument('--score', help='Score the provided solution files instead.', action='store_true')
     group.add_argument('--generate',
                         help='Set to `individuals` to generate individuals without groups ' +

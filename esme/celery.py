@@ -24,6 +24,8 @@ def create_schedule(data, input_files, config_file, output):
         with open('{}_progress.json'.format(output), 'w') as outfile:
             json.dump(data, outfile)
 
+    print(data)
+
     solver_args = {
         'config': config_file,
         'input': input_files,
@@ -32,7 +34,8 @@ def create_schedule(data, input_files, config_file, output):
         'max_members_per_group': data['max_team_size'],
         'num_boats': data['num_boats'],
         'courses_per_team': data['courses_per_team'],
-        'min_available': '1'
+        'min_available': '1',
+        'profile': 'progression 5'
     }
 
     args = []
@@ -42,6 +45,8 @@ def create_schedule(data, input_files, config_file, output):
     for key, value in vars(parsed_args).items():
         if isinstance(value, str) and is_number(value):
             setattr(parsed_args, key, int(value))
+
+    print(parsed_args)
 
     solver = SchedulingSolver(parsed_args)
     solver.set_progress_callback(report_progress)
