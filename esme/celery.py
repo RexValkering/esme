@@ -24,29 +24,29 @@ def create_schedule(data, input_files, config_file, output):
         with open('{}_progress.json'.format(output), 'w') as outfile:
             json.dump(data, outfile)
 
-    print(data)
-
-    solver_args = {
-        'config': config_file,
-        'input': input_files,
-        'output': output,
-        'min_members_per_group': data['min_team_size'],
-        'max_members_per_group': data['max_team_size'],
-        'num_boats': data['num_boats'],
-        'courses_per_team': data['courses_per_team'],
-        'min_available': '1',
-        'profile': 'progression 5'
-    }
+    solver_args = [
+        ['config', config_file],
+        ['output', output],
+        ['min_members_per_group', data['min_team_size']],
+        ['max_members_per_group', data['max_team_size']],
+        ['num_boats', data['num_boats']],
+        ['courses_per_team', data['courses_per_team']],
+        ['min_available', '1'],
+        ['profile', data['profile']]
+    ]
 
     args = []
-    for key, value in solver_args.items():
+    for key, value in solver_args:
         args += ['--{}'.format(key), str(value)]
     parsed_args = parse_args(args)
     for key, value in vars(parsed_args).items():
         if isinstance(value, str) and is_number(value):
             setattr(parsed_args, key, int(value))
 
-    print(parsed_args)
+    if isinstance(input_files, list):
+        setattr(parsed_args, 'input', input_files)
+    else:
+        setattr(parsed_args, 'input', [input_files])
 
     solver = SchedulingSolver(parsed_args)
     solver.set_progress_callback(report_progress)

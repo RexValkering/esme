@@ -20,6 +20,7 @@ class SolverProgress(object):
         self.phase = (iterator.current_phase, len(iterator.phases))
         score = iterator.score_history[-1] if iterator.score_history else None
         self.score = (score.assignment, score.scheduling) if score else (0.0, 0.0)
+        self.total_score = round(score.score(), 2) if score else 0.0
 
     def to_dict(self):
         return self.__dict__
@@ -273,7 +274,8 @@ class SolverIterator(object):
     def __next__(self):
         # If the last phase has finished, raise a StopIteration
         if self.progress_callback:
-            self.progress_callback(SolverProgress(self).to_dict())
+            score = SolverProgress(self)
+            self.progress_callback(score.to_dict())
 
         if self.current_phase >= len(self.phases):
             raise StopIteration
