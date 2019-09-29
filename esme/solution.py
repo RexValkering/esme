@@ -47,6 +47,7 @@ class Solution(object):
         """Load configuration file"""
         parameters = [
             'num_traits',
+            'num_info',
             'trait_weights',
             'min_members_per_group',
             'max_members_per_group',
@@ -69,6 +70,7 @@ class Solution(object):
     def _load_individuals(self):
         """Load the file with individuals and groups."""
         parser = InputFileParser(self._resolve_input('groups'),
+                                 self.config['num_info'],
                                  self.config['num_traits'],
                                  sum(self.config['timeslots']))
         self.individuals, self.groups = parser.parse()
