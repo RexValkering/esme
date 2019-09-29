@@ -16,11 +16,12 @@ class SchedulingIndividual(object):
 
     num_members = 1
 
-    def __init__(self, name, preferences=None, traits=None):
+    def __init__(self, name, preferences=None, traits=None, info=None):
         self.id = next(self._ids)
         self.name = name
         self.preferences = preferences
         self.traits = traits if traits is not None else []
+        self.info = info if info is not None else []
         self.normalized_traits = []
         self.scheduled_timeslots_availability = []
 

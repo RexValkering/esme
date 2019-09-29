@@ -20,6 +20,7 @@ class SchedulingSolver():
     """ Main class for the scheduling problem solver."""
     generate = None
 
+    num_info = None
     num_traits = None
     trait_weights = None
     num_to_generate = None
@@ -106,7 +107,7 @@ class SchedulingSolver():
         Args:
             input_file: file to read
         """
-        parser = InputFileParser(input_file, self.num_traits)
+        parser = InputFileParser(input_file, self.num_info, self.num_traits)
         individuals_from_file, groups_from_file = parser.parse()
         self.assignable_individuals.append(individuals_from_file)
         self.assignable_groups.extend(groups_from_file)
@@ -133,6 +134,7 @@ class SchedulingSolver():
         parameters = {
             'generate': 'groups',
             'num_to_generate': 6,
+            'num_info': 0,
             'num_traits': 0,
             'trait_weights': [],
             'min_members_per_group': 6,
@@ -413,11 +415,12 @@ class SchedulingSolver():
         with open(groups_file, 'w', encoding='utf-8') as outfile:
             writer = csv.writer(outfile)
             writer.writerow(['Name', 'Group'] +
+                            ['Info {}'.format(i+1) for i in range(self.num_info)] +
                             ['Trait {}'.format(i+1) for i in range(self.num_traits)] +
                             self.list_of_timeslots())
             for group in self.solution_groups:
                 for member in group.members:
-                    writer.writerow([member.name, group.name] + member.traits +
+                    writer.writerow([member.name, group.name] + member.info + member.traits +
                                     member.availability())
 
 
@@ -433,6 +436,7 @@ class SchedulingSolver():
         config_file = "{}_config.yaml".format(self.output_prefix)
         with open(config_file, 'w') as outfile:
             config = {
+                'num_info': self.num_info,
                 'num_traits': self.num_traits,
                 'trait_weights': self.trait_weights,
                 'min_members_per_group': self.min_members_per_group,

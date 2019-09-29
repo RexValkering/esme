@@ -1,6 +1,9 @@
 import os
 import yaml
+from collections import namedtuple
 
+from .common import SolutionScore
+from .algorithms import evaluate_schedule
 from .parsers import InputFileParser, GroupScheduleParser
 
 
@@ -10,6 +13,7 @@ class Solution(object):
     individuals = None
     groups = None
     schedule = None
+    score = None
 
     def __init__(self, solution_name):
         self.solution_name = solution_name
@@ -18,6 +22,7 @@ class Solution(object):
         self._load_individuals()
         self._load_schedule()
         self._load_progress()
+        self._calculate_score()
 
     def _resolve_input(self, extension):
         """Retrieve the path to the file for a given extension."""
@@ -76,3 +81,14 @@ class Solution(object):
 
     def _load_progress(self):
         pass
+
+    def _calculate_score(self):
+        score, maximum = 0, 0
+        for day in self.schedule:
+            for timeslot in day:
+                for team in timeslot:
+                    for individual in team.members:
+                        score += sum(individual.scheduled_timeslots_availability)
+                        maximum += len(individual.scheduled_timeslots_availability)
+
+        self.score = round(100.0 * score / maximum, 1)

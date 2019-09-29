@@ -13,8 +13,9 @@ class InputFileParser(object):
         num_traits: the number of traits in the file
     """
 
-    def __init__(self, input_file, num_traits, num_timeslots=None):
+    def __init__(self, input_file, num_info, num_traits, num_timeslots=None):
         self.input_file = input_file
+        self.num_info = num_info
         self.num_traits = num_traits
         self.groups = defaultdict(list)
         self.detected_slots = num_timeslots
@@ -39,10 +40,13 @@ class InputFileParser(object):
             raise ValueError("Incorrect value in availability: {}".format(self._extract_availability(row)))
 
     def _extract_traits(self, row):
-        return row[2:2 + self.num_traits]
+        return row[2 + self.num_info:2 + self.num_info + self.num_traits]
 
     def _extract_availability(self, row):
-        return row[2 + self.num_traits:]
+        return row[2 + self.num_info + self.num_traits:]
+
+    def _extract_info(self, row):
+        return row[2:2 + self.num_info]
 
     def _parse_file(self):
         """Reads individuals from the submitted input file."""
@@ -57,10 +61,11 @@ class InputFileParser(object):
                 self._validate_row(row)
                 name = row[0]
                 group = row[1]
+                info = self._extract_info(row)
                 availability = [int(x) for x in self._extract_availability(row)]
                 traits = [float(x) for x in self._extract_traits(row)]
 
-                self.groups[group].append(SchedulingIndividual(name, availability, traits=traits))
+                self.groups[group].append(SchedulingIndividual(name, availability, info=info, traits=traits))
 
     def _normalize_traits(self):
         """Each trait may have a different distribution. Normalize the traits."""

@@ -3,6 +3,7 @@ min_members_per_group: 11        # Number of members per groups
 max_members_per_group: 12        # Number of members per groups
 
 # Available slots information
+num_info: 1
 num_traits: 1
 trait_weights:
   - 1.0
