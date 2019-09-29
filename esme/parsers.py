@@ -30,9 +30,9 @@ class InputFileParser(object):
 
     def _validate_row(self, row):
         if not self.detected_slots:
-            self.detected_slots = len(row) - 2 - self.num_traits
+            self.detected_slots = len(row) - 2 - self.num_info - self.num_traits
 
-        valid_row_length = 2 + self.num_traits + self.detected_slots
+        valid_row_length = 2 + self.num_info + self.num_traits + self.detected_slots
         if len(row) != valid_row_length:
             raise ValueError("Row does not have valid number of columns: {}".format(str(row)))
 
